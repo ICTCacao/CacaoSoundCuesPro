@@ -1,0 +1,78 @@
+name: CacaoSoundCuesPro
+# CacaoSoundCues Pro（非公開）。となりの公開版 ../CacaoSoundCues のソースに、Pro の機能（Pro/）を足してビルドする。
+# 公開版のソースの中の `#if PRO` が、Pro の機能への差し込み口
+options:
+  bundleIdPrefix: com.ictcacao
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  CacaoSoundCuesCore:
+    path: ../CacaoSoundCues/Packages/CacaoSoundCuesCore
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+    SWIFT_STRICT_CONCURRENCY: minimal
+
+targets:
+  CacaoSoundCuesPro:
+    type: application
+    platform: macOS
+    sources:
+      - path: ../CacaoSoundCues/CacaoSoundCues
+        excludes:
+          - "Resources/*.plist"
+      - path: Pro
+        excludes:
+          - "Resources/*.plist"
+    dependencies:
+      - package: CacaoSoundCuesCore
+    info:
+      path: Pro/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: CacaoSoundCuesPro
+        CFBundleName: CacaoSoundCuesPro
+        CFBundleShortVersionString: "5.0.0"
+        CFBundleVersion: "5.0.0"
+        LSMinimumSystemVersion: "14.0"
+        CFBundleDevelopmentRegion: ja
+        CFBundleLocalizations: [ja, en]
+        CFBundleAllowMixedLocalizations: true
+        LSApplicationCategoryType: public.app-category.music
+        NSHumanReadableCopyright: "© 2026 ICTCacao"
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: CacaoSoundCues キューシート
+            CFBundleTypeIconFile: CueSheet
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSTypeIsPackage: true
+            LSItemContentTypes: [com.ictcacao.ccsc]
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.ictcacao.ccsc
+            UTTypeDescription: CacaoSoundCues キューシート
+            UTTypeConformsTo: [com.apple.package, public.composite-content]
+            UTTypeIconFile: CueSheet
+            UTTypeTagSpecification:
+              public.filename-extension: [ccsc]
+    settings:
+      base:
+        PRODUCT_NAME: CacaoSoundCuesPro
+        PRODUCT_BUNDLE_IDENTIFIER: com.ictcacao.CacaoSoundCuesPro
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) PRO"
+
+schemes:
+  CacaoSoundCuesPro:
+    build:
+      targets:
+        CacaoSoundCuesPro: all
+    run:
+      config: Debug
