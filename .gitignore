@@ -4,3 +4,4 @@ xcuserdata/
 build/
 *.xcodeproj/
 dist/*.app
+dist/*.zip

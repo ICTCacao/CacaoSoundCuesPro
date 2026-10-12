@@ -49,6 +49,8 @@ targets:
         CFBundleAllowMixedLocalizations: true
         LSApplicationCategoryType: public.app-category.music
         NSHumanReadableCopyright: "© 2026 ICTCacao"
+        NSLocalNetworkUsageDescription: バックアップ機との同時運転で、同じネットワークの Mac とつなぐために使います
+        NSBonjourServices: [_cacaosc._tcp]
         CFBundleDocumentTypes:
           - CFBundleTypeName: CacaoSoundCues キューシート
             CFBundleTypeIconFile: CueSheet

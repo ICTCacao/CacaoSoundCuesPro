@@ -235,7 +235,14 @@ final class ProModel {
         didSet { UserDefaults.standard.set(showPanel, forKey: "pro.showScript") }
     }
     /// いま表示しているページ（0 から）と、ページの数（台本のパネルが決める）
-    var page = 0
+    var page = 0 {
+        // メイン機なら、バックアップ機へページを送る（スクロールで変わったときは、スクロールの位置を送るので送らない）
+        didSet { if page != oldValue, !pageFromScroll { ProSync.shared.pageChanged(page) } }
+    }
+    /// スクロールで流したことでページが変わったとき
+    @ObservationIgnored var pageFromScroll = false
+    /// バックアップ機: メイン機のスクロールの位置（ページ単位。1.5 なら 2 ページ目の半分まで流した）
+    var scrollRequest: Double?
     var pageCount = 0
     /// クリックで選んだ台本の位置（結びつける相手）
     var selected: CueAnchor?
@@ -494,6 +501,8 @@ final class ProModel {
     /// その印の音だけを止める（Esc の全停止ではなく、その音のフェードアウト設定で）。
     /// リストの曲は、曲だけ止めると次の曲が続いて鳴ることがあるので、そのリストを停止フェードで止める
     func stop(markID: UUID) {
+        guard ProSync.shared.begin(.stopMark(markID)) else { return }
+        defer { ProSync.shared.end() }
         for seq in model.show.sequences where seq.steps.contains(where: { $0.id == markID }) {
             if model.isRunning(seq.id) { model.stopSequence(seq.id) }
             return

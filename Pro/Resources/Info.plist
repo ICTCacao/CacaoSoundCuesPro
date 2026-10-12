@@ -50,8 +50,14 @@
 	<string>public.app-category.music</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_cacaosc._tcp</string>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 ICTCacao</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>バックアップ機との同時運転で、同じネットワークの Mac とつなぐために使います</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>

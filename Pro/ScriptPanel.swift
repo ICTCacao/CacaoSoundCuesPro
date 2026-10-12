@@ -37,6 +37,9 @@ struct ProScriptSplit<Content: View>: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+        // バックアップ機のとき: メイン機とつながっているか（切れたら大きく）
+        SyncBanner()
         GeometryReader { geo in
             let total = geo.size.width
             let width = scriptWidth(total: total)
@@ -59,6 +62,7 @@ struct ProScriptSplit<Content: View>: View {
                     .opacity(full && pro.showPanel ? 0 : 1)
                     .allowsHitTesting(!(full && pro.showPanel))
             }
+        }
         }
     }
 
@@ -142,6 +146,7 @@ struct ProTopBarItems: View {
         }
         .help(L("出力の系統（機器と左右のチャンネル）を決める"))
         .sheet(isPresented: $showOutputs) { OutputsSheet() }
+        SyncTopBarButton()
     }
 }
 
@@ -524,6 +529,12 @@ struct ScriptPager: NSViewRepresentable {
             }
         }
         view.applyHighlight(selected: selected)
+        // バックアップ機: メイン機のスクロールの位置に合わせる
+        if let pos = pro.scrollRequest {
+            DispatchQueue.main.async { pro.scrollRequest = nil }
+            view.setScroll(pos)
+            return
+        }
         if let uid = pro.revealRequest {
             DispatchQueue.main.async {
                 pro.revealRequest = nil
@@ -644,6 +655,17 @@ final class PagerView: NSView {
         stopAnimation()
         setOffset(offset + d)
         reportPage()
+        // バックアップ機へ、流した位置を送る
+        let pos = Double(offset / pageLength)
+        MainActor.assumeIsolated { ProSync.shared.scrolled(pos) }
+    }
+
+    /// メイン機のスクロールの位置に合わせる（バックアップ機）
+    func setScroll(_ pos: Double) {
+        guard !textViews.isEmpty else { return }
+        stopAnimation()
+        setOffset(CGFloat(pos) * pageLength)
+        reportPage()
     }
 
     private func setOffset(_ value: CGFloat) {
@@ -656,7 +678,16 @@ final class PagerView: NSView {
         let p = currentPage
         guard p != reportedPage else { return }
         reportedPage = p
-        DispatchQueue.main.async { MainActor.assumeIsolated { if ProModel.shared.page != p { ProModel.shared.page = p } } }
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                let pro = ProModel.shared
+                guard pro.page != p else { return }
+                // スクロールで変わったページは、ページ送りとしては送らない（流した位置を送る）
+                pro.pageFromScroll = true
+                pro.page = p
+                pro.pageFromScroll = false
+            }
+        }
     }
 
     private func animate(to target: CGFloat) {
