@@ -138,6 +138,7 @@ private struct FoldedScriptStrip: View {
 struct ProTopBarItems: View {
     private var pro: ProModel { ProModel.shared }
     @State private var showOutputs = false
+    @State private var showMIDI = false
 
     var body: some View {
         @Bindable var pro = pro
@@ -154,6 +155,15 @@ struct ProTopBarItems: View {
         #if DEBUG
         // 開発版だけ: マニュアルの画面写真用に、起動引数で出力の設定を開く（-debugOutputs YES）
         .onAppear { if UserDefaults.standard.bool(forKey: "debugOutputs") { showOutputs = true } }
+        #endif
+        Button { showMIDI = true } label: {
+            Label("MIDI", systemImage: "pianokeys")
+        }
+        .help(L("MIDI コントローラ・照明卓（MSC）で操作する、照明卓などへ MIDI を送る"))
+        .sheet(isPresented: $showMIDI) { MIDISheet() }
+        #if DEBUG
+        // 開発版だけ: マニュアルの画面写真用に、起動引数で MIDI の設定を開く（-debugMIDI YES）
+        .onAppear { if UserDefaults.standard.bool(forKey: "debugMIDI") { showMIDI = true } }
         #endif
         SyncTopBarButton()
     }

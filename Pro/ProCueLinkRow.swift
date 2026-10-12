@@ -10,6 +10,8 @@ struct ProCueLinkRow: View {
     var body: some View {
         // 出力の系統（系統が 2 つ以上あるとき）
         ProOutputRow(cueID: cueID)
+        // MIDI で鳴らす・MIDI を送る
+        ProMIDIRow(cueID: cueID)
         if pro.hasScript {
             VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {

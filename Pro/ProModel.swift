@@ -218,6 +218,8 @@ struct ProData: Codable, Equatable {
     var bodyChars: Int?
     /// Standby が移ったら、そのきっかけのページへ自動で送る（ふだんは OFF。自分でページを送る）
     var autoFollow = false
+    /// MIDI コントロールの割り当て（合図 → 操作、キー・曲 → 鳴り始めたときに送るもの）
+    var midi = MIDISettings()
 
     init() {}
     init(from d: Decoder) throws {
@@ -237,6 +239,7 @@ struct ProData: Codable, Equatable {
         nameChars = try? c.decode(Int.self, forKey: .nameChars)
         bodyChars = try? c.decode(Int.self, forKey: .bodyChars)
         autoFollow = (try? c.decode(Bool.self, forKey: .autoFollow)) ?? false
+        midi = (try? c.decode(MIDISettings.self, forKey: .midi)) ?? MIDISettings()
     }
 }
 
@@ -341,6 +344,7 @@ final class ProModel {
         pro.links = pro.links.filter { ids.contains($0.key) }
         pro.ends = pro.ends.filter { ids.contains($0.key) && pro.links[$0.key] != nil }
         pro.memos = pro.memos.filter { ids.contains($0.key) && !$0.value.isEmpty }
+        pro.midi.sends = pro.midi.sends.filter { ids.contains($0.key) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(pro).write(to: url.appendingPathComponent(Self.dataFile), options: .atomic)
@@ -450,6 +454,13 @@ final class ProModel {
             changed = true
         }
         if changed { model.markDirty() }
+    }
+
+    /// MIDI の割り当てを変える
+    func updateMIDI(_ change: (inout MIDISettings) -> Void) {
+        let before = data.midi
+        change(&data.midi)
+        if data.midi != before { model.markDirty() }
     }
 
     func setNameChars(_ n: Int?) { data.nameChars = n; model.markDirty() }
