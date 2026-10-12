@@ -29,6 +29,8 @@ targets:
       - path: ../CacaoSoundCues/CacaoSoundCues
         excludes:
           - "Resources/*.plist"
+          # 表示名は Pro/Resources の InfoPlist.strings（CacaoSoundCuesPro）を使う
+          - "Resources/*.lproj/InfoPlist.strings"
       - path: Pro
         excludes:
           - "Resources/*.plist"

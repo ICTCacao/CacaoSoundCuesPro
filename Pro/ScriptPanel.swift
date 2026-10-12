@@ -18,11 +18,40 @@ struct ProScriptSplit<Content: View>: View {
                     .frame(minWidth: 280, idealWidth: 380)
                     .background(SplitPersistence(key: "pro.split.script"))
                 content
-                    .frame(minWidth: 1100, maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
-            content
+            // 畳んだときは左に細い帯を残し、押すと開く
+            HStack(spacing: 0) {
+                FoldedScriptStrip()
+                ThemeDivider()
+                content
+            }
         }
+    }
+}
+
+/// 畳んだ台本のパネル（左の細い帯）
+private struct FoldedScriptStrip: View {
+    private var pro: ProModel { ProModel.shared }
+
+    var body: some View {
+        Button { pro.showPanel = true } label: {
+            VStack(spacing: 10) {
+                Image(systemName: "chevron.right")
+                Image(systemName: "text.book.closed")
+                Text(L("台本"))
+                    .font(.caption)
+                Spacer()
+            }
+            .padding(.top, 12)
+            .frame(width: 28)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(Theme.panel)
+        .help(L("台本のパネルを開く"))
     }
 }
 
@@ -36,7 +65,7 @@ struct ProTopBarItems: View {
             Label(L("台本"), systemImage: "text.book.closed")
         }
         .toggleStyle(.button)
-        .help(L("台本（ScenarioWriterSolo）のパネルを出す"))
+        .help(L("台本（ScenarioWriterSolo）のパネルを出す・畳む"))
     }
 }
 
@@ -124,6 +153,9 @@ struct ScriptPanel: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .disabled(model.showMode && pro.script == nil)
+            Button { pro.showPanel = false } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(.borderless)
+                .help(L("台本のパネルを左に畳む"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
