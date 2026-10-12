@@ -30,9 +30,12 @@ Pro の機能の言葉の英訳は `Pro/Resources/Languages/en-pro.json`（公�
 ```sh
 <Debug の app>/Contents/MacOS/CacaoSoundCuesPro -debugOpen <サンプル.ccsc> -debugSelectKey 18 \
   -pro.sync.role off -pro.showScript '<true/>' -showKeyboard NO -showInspector YES \
-  [-debugOutputs YES] [-debugSync YES -pro.sync.role main|backup] [-pro.outputs '<系統の JSON を16進>']
+  [-debugOutputs YES] [-debugSync YES -pro.sync.role main|backup] [-pro.outputs '<系統の JSON を16進>'] \
+  [-debugMIDI YES -pro.midi.output '<送る機器の名前>']
 screencapture -x -o -l <窓の番号> 01-main.png
 ```
+
+MIDI の画面写真（08・09）は、撮る間だけ CoreMIDI の仮想の機器（「MIDI Controller」「Lighting Console」）を作って撮った。
 
 ## Pro の機能
 
@@ -105,4 +108,3 @@ screencapture -x -o -l <窓の番号> 01-main.png
 ### これから
 
 - 同時運転: 途中からつないだとき、鳴っている音と Standby をメイン機に合わせる
-- マニュアルに MIDI コントロールのページ

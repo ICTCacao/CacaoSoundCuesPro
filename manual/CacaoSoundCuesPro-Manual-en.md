@@ -61,7 +61,8 @@ Version 5.0.2 / October 2026
 4. Following the script and playing from the band during a show
 5. Outputs (sending sounds to several speakers or devices)
 6. Running with a backup Mac
-7. What is saved, and troubleshooting
+7. MIDI control (controllers and lighting consoles)
+8. What is saved, and troubleshooting
 
 > For the basics (assigning sounds, fades, lists, Show Mode), see the free **CacaoSoundCues Manual**. Pro works the same way.
 
@@ -89,6 +90,10 @@ Version 5.0.2 / October 2026
 
 - Operations on the main Mac are sent to a second Mac, which plays the same way
 - If the main Mac stops, carry on with the backup
+
+### MIDI control
+
+- Operate from MIDI controllers, foot pedals or a lighting console (MSC), and send MIDI to the console when sounds start
 
 ### Compatibility with the free version
 
@@ -143,6 +148,7 @@ This is used to connect to the backup Mac on the same network. Click **Allow**.<
 |---|---|
 | **Script** | Show or hide the script panel |
 | **Output** | Set up outputs (devices and channels) → section 9 |
+| **MIDI** | MIDI control (input device, output device, assignments) → section 11 |
 | **Backup** | Running with a backup Mac → section 10. Dot color: gray = off, green = connected, orange = cue sheets differ, red = disconnected |
 | **Keyboard** | Show or hide the keyboard (hidden: a list of assigned keys) |
 | **Inspector** | Show or hide the settings on the right. Hiding it gives the script more room |
@@ -356,7 +362,7 @@ The line starts exactly where you clicked (even between lines).
 
 Pro data is stored inside the cue sheet (.ccsc).
 
-- **pro.json**: links, stop points, line positions, memos, notes, display settings, and the output for each key or track
+- **pro.json**: links, stop points, line positions, memos, notes, display settings, the output for each key or track, and MIDI assignments
 - **Script/**: a copy of the imported script (.scwd or PDF)
 
 </div>
@@ -365,7 +371,7 @@ Pro data is stored inside the cue sheet (.ccsc).
 - The free version leaves these alone, so **opening and saving in the free version does not remove them**
 - Take the cue sheet to another Mac and the script goes with it
 
-<span class="small">Output device settings and the backup role are saved per Mac (not in the cue sheet).</span>
+<span class="small">Output device settings, the backup role, and the MIDI input and output devices are saved per Mac (not in the cue sheet).</span>
 
 </div>
 </div>
@@ -498,7 +504,86 @@ Pro data is stored inside the cue sheet (.ccsc).
 
 ---
 
-## 11. Troubleshooting
+## 11. MIDI control
+
+<div class="cols-wide">
+<div>
+
+### What it does
+
+- **Receive**: operate with MIDI controllers, pads and foot pedals (notes, CC, program changes) or **MSC** from a lighting console
+- **Send**: when a key or list track **starts playing**, send MIDI to a lighting console (keep sound and light cues together)
+
+### Choosing devices
+
+1. Click **MIDI** in the top bar
+2. **Input device** (usually “All MIDI inputs”)
+3. **Output device**
+
+</div>
+<div class="shot">
+
+![w:620](img/en-08-midi.png)
+
+</div>
+</div>
+
+---
+
+## MIDI: operating with signals
+
+<div class="cols">
+<div>
+
+1. Click **Add assignment**
+2. Click **Learn**, then press the controller button (or send from the console). The signal is filled in
+3. On the right, choose **what to do**: a key, start/stop a list, **Return** (next song), **Space** (end current song), **Esc** (stop all), **↑↓** (Standby), script pages, or **master volume**
+
+<span class="small">“Received” shows the last signal that arrived — handy for checking the connection.</span>
+
+<span class="small">USB MIDI devices appear as soon as they are plugged in. Network MIDI and the IAC driver (other apps on the same Mac) are set up in Audio MIDI Setup.</span>
+
+</div>
+<div>
+
+- A key can also be assigned with **Learn** under “Play by MIDI” in the inspector
+- **Master volume** follows a CC knob or fader (0–127 maps to −40 to +6 dB)
+- When a CC is used as a button, it counts as pressed when the value rises past 64
+- Assignments are **saved in the cue sheet**, so each show can have its own
+
+</div>
+</div>
+
+---
+
+## MIDI: lighting consoles (MSC)
+
+<div class="cols">
+<div>
+
+### Receiving from the console
+
+- **Add common MSC assignments** adds GO → Return, STOP → Space, ALL OFF → Esc
+- You can also assign by cue number (GO cue 12 → key A, etc.). Without a numbered assignment, the “any cue number” one is used
+- **MSC device ID**: match the console’s target ID (127 accepts any)
+
+</div>
+<div>
+
+### Sending to the console
+
+Select a key or track and, under **Send MIDI** in the inspector, choose a note, CC, program change or MSC GO (cue number). **Test send** checks it.
+
+![w:560](img/en-09-midi-inspector.png)
+
+<span class="small">Nothing is sent when pressing again stops the sound. A backup Mac does not send (it does after taking over).</span>
+
+</div>
+</div>
+
+---
+
+## 12. Troubleshooting
 
 | Problem | What to check |
 |---|---|
@@ -509,5 +594,7 @@ Pro data is stored inside the cue sheet (.ccsc).
 | The backup Mac cannot be found | Same network? Local network permission? Connect by IP address |
 | The backup plays different sounds | Do the cue sheets match (Backup window)? Send again from the main Mac |
 | The backup Mac cannot be operated | That is by design. Use Take Over to operate it |
+| MIDI signals do nothing | Does “Received” in the MIDI window show them? If not, check the input device and cables; if so, check the assignment (for MSC, the device ID) |
+| The lighting console gets no MIDI | Is an output device chosen? Check with Test send |
 
 <span class="small">For the basics (keys, lists, Show Mode, settings), see the free CacaoSoundCues Manual.</span>
