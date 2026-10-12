@@ -653,6 +653,10 @@ struct SyncTopBarButton: View {
         }
         .help(L("バックアップ機との同時運転（%@）", label))
         .sheet(isPresented: $show) { SyncSheet() }
+        #if DEBUG
+        // 開発版だけ: マニュアルの画面写真用に、起動引数で同時運転の画面を開く（-debugSync YES）
+        .onAppear { if UserDefaults.standard.bool(forKey: "debugSync") { show = true } }
+        #endif
     }
 
     private var label: String {

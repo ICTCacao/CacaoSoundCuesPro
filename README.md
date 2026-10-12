@@ -15,6 +15,25 @@ xcodebuild -scheme CacaoSoundCuesPro -configuration Release -derivedDataPath bui
 cp -R build/dd/Build/Products/Release/CacaoSoundCuesPro.app dist/
 ```
 
+## マニュアル
+
+`manual/CacaoSoundCuesPro-マニュアル.md`（日本語）と `manual/CacaoSoundCuesPro-Manual-en.md`（英語）。Marp、公開版のマニュアルと
+同じ見た目。`manual/build.sh` で両方の PDF を作り `dist/` にも置く（要 `brew install marp-cli` と Google Chrome）。基本の操作は公開版のマニュアルにまかせ、Pro の機能だけを書く。
+
+画面写真（`manual/img/`）は開発版（Debug）を起動引数で撮る。本物の公演データを写さないよう、作った音と
+ScenarioWriterSolo の `samples/sample.scwd` で作ったサンプル公演を使う。撮るときは出力の系統と同時運転を始めない
+（このMacの出力や役の設定に触らない）。英語版の画面写真（`img/en-*.png`）は、英語の名前のサンプル（音のファイル名も英語）を `-language en` で撮る
+（台本は日本語のサンプルのまま。台本パネルは日本語の台本を紙と同じ字数で折り返す作りのため）。
+
+Pro の機能の言葉の英訳は `Pro/Resources/Languages/en-pro.json`（公開版の `en.json` に重ねて読む）。言葉を足したら、ここにも訳を足す。
+
+```sh
+<Debug の app>/Contents/MacOS/CacaoSoundCuesPro -debugOpen <サンプル.ccsc> -debugSelectKey 18 \
+  -pro.sync.role off -pro.showScript '<true/>' -showKeyboard NO -showInspector YES \
+  [-debugOutputs YES] [-debugSync YES -pro.sync.role main|backup] [-pro.outputs '<系統の JSON を16進>']
+screencapture -x -o -l <窓の番号> 01-main.png
+```
+
 ## Pro の機能
 
 ### 台本連動（ScenarioWriterSolo の .scwd）

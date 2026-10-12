@@ -146,6 +146,10 @@ struct ProTopBarItems: View {
         }
         .help(L("出力の系統（機器と左右のチャンネル）を決める"))
         .sheet(isPresented: $showOutputs) { OutputsSheet() }
+        #if DEBUG
+        // 開発版だけ: マニュアルの画面写真用に、起動引数で出力の設定を開く（-debugOutputs YES）
+        .onAppear { if UserDefaults.standard.bool(forKey: "debugOutputs") { showOutputs = true } }
+        #endif
         SyncTopBarButton()
     }
 }
