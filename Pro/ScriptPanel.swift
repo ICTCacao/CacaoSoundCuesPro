@@ -1,5 +1,6 @@
 import AppKit
 import CacaoSoundCuesCore
+import PDFKit
 import SwiftUI
 
 // 台本のパネル。台本を目で追いながら、自分でページを送る（← → ／ 下の ‹ ›）。
@@ -144,7 +145,7 @@ struct ProTopBarItems: View {
             Label(L("台本"), systemImage: "text.book.closed")
         }
         .toggleStyle(.button)
-        .help(L("台本（ScenarioWriterSolo）のパネルを出す・畳む"))
+        .help(L("台本（ScenarioWriterSolo・PDF）のパネルを出す・畳む"))
         Button { showOutputs = true } label: {
             Label(L("出力"), systemImage: "hifispeaker.2")
         }
@@ -166,9 +167,9 @@ struct ScriptPanel: View {
         VStack(spacing: 0) {
             header
             ThemeDivider()
-            if let script = pro.displayScript {
+            if let source = scriptSource {
                 GeometryReader { geo in
-                    ScriptPager(script: script,
+                    ScriptPager(source: source,
                                 size: geo.size,
                                 vertical: pro.data.vertical,
                                 fontSize: pro.data.fontSize,
@@ -189,7 +190,7 @@ struct ScriptPanel: View {
                 PlayingWaveStrip()
                     .frame(height: 44)
                 ThemeDivider()
-                footer(script)
+                footer
             } else {
                 empty
             }
@@ -199,6 +200,12 @@ struct ScriptPanel: View {
         .onChange(of: standbyLine) { _, uid in
             if pro.data.autoFollow, let uid { pro.revealRequest = uid }
         }
+    }
+
+    /// 表示する台本（ScenarioWriterSolo の台本か PDF）
+    private var scriptSource: ScriptSource? {
+        if let pdf = pro.pdf { return .pdf(pdf) }
+        return pro.displayScript.map { .text($0) }
     }
 
     /// Standby の曲が結びついている台本の行
@@ -211,12 +218,13 @@ struct ScriptPanel: View {
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: "text.book.closed")
-            Text(pro.script.map { $0.title.isEmpty ? L("台本") : $0.title } ?? L("台本"))
+            Text(pro.scriptTitle.isEmpty ? L("台本") : pro.scriptTitle)
                 .font(.headline)
                 .lineLimit(1)
             Spacer()
-            if pro.script != nil {
-                // 縦書き・横書きの切り替え（ScenarioWriterSolo の「縦書き / 横書き」ボタンと同じ）
+            if pro.hasScript {
+                // 縦書き・横書きの切り替え（ScenarioWriterSolo の「縦書き / 横書き」ボタンと同じ）。
+                // PDF は向きを変えられないので、台本の向き（ページを送る向きと、帯の場所）を選ぶ
                 Picker("", selection: Binding(get: { pro.data.vertical }, set: { pro.setVertical($0) })) {
                     Text(L("縦")).tag(true)
                     Text(L("横")).tag(false)
@@ -224,15 +232,35 @@ struct ScriptPanel: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                .help(L("台本を縦書き・横書きで表示"))
+                .help(pro.isPDF ? L("PDF の台本の向き（縦書きは帯が下で ← が次のページ、横書きは帯が右）") : L("台本を縦書き・横書きで表示"))
             }
             Menu {
                 Button { pro.importScript() } label: { Label(L("台本を取り込む…"), systemImage: "square.and.arrow.down") }
-                if pro.script != nil {
+                if pro.hasScript {
                     Button { pro.reloadScript() } label: { Label(L("台本を読み込み直す"), systemImage: "arrow.clockwise") }
                     Divider()
                     Toggle(L("縦書き"), isOn: Binding(get: { pro.data.vertical }, set: { pro.setVertical($0) }))
                     Toggle(L("Standby のきっかけへ自動でページを送る"), isOn: Binding(get: { pro.data.autoFollow }, set: { pro.setAutoFollow($0) }))
+                    if !pro.isPDF { textMenus }
+                    Divider()
+                    Button(role: .destructive) { pro.removeScript() } label: { Label(L("台本を外す"), systemImage: "xmark") }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .disabled(model.showMode && !pro.hasScript)
+            Button { pro.showPanel = false } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(.borderless)
+                .help(L("台本のパネルを左に畳む"))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    /// 文字の大きさ・字数・行間・文字間（ScenarioWriterSolo の台本だけ。PDF は変えられない）
+    @ViewBuilder private var textMenus: some View {
                     // 文字の大きさは上限。1 行（人物名欄 ＋ 本文の字数）が入りきらないときは小さくなる
                     Menu(L("文字の大きさ")) {
                         ForEach([12.0, 14, 16, 18, 20, 24, 28, 32], id: \.self) { s in
@@ -274,26 +302,11 @@ struct ScriptPanel: View {
                             }
                         }
                     }
-                    Divider()
-                    Button(role: .destructive) { pro.removeScript() } label: { Label(L("台本を外す"), systemImage: "xmark") }
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .disabled(model.showMode && pro.script == nil)
-            Button { pro.showPanel = false } label: { Image(systemName: "chevron.left") }
-                .buttonStyle(.borderless)
-                .help(L("台本のパネルを左に畳む"))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 
     private var empty: some View {
         VStack(spacing: 10) {
-            Text(L("ScenarioWriterSolo の台本（.scwd）を取り込むと、ここに台本が出ます。\nキーやリストの曲を、台本の行（きっかけ）に結びつけられます。"))
+            Text(L("ScenarioWriterSolo の台本（.scwd）か PDF の台本を取り込むと、ここに台本が出ます。\nキーやリストの曲を、台本の位置（きっかけ）に結びつけられます。"))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             Button { pro.importScript() } label: { Label(L("台本を取り込む…"), systemImage: "square.and.arrow.down") }
@@ -304,7 +317,7 @@ struct ScriptPanel: View {
     }
 
     /// 下の帯: ページ送りと、次のページのきっかけ
-    private func footer(_ script: ScriptDocument) -> some View {
+    private var footer: some View {
         let next = nextPageMarks
         let vertical = pro.data.vertical
         return VStack(alignment: .leading, spacing: 4) {
@@ -496,8 +509,14 @@ private extension NSAttributedString.Key {
     static let scriptPiece = NSAttributedString.Key("CacaoScriptPiece")
 }
 
+/// 台本のパネルに出す台本: ScenarioWriterSolo の台本（文字を組む）か、ふつうの PDF（ページをそのまま出す）
+enum ScriptSource: Equatable {
+    case text(ScriptDocument)
+    case pdf(PDFDocument)
+}
+
 struct ScriptPager: NSViewRepresentable {
-    let script: ScriptDocument
+    let source: ScriptSource
     let size: CGSize
     let vertical: Bool
     let fontSize: Double
@@ -518,11 +537,11 @@ struct ScriptPager: NSViewRepresentable {
     func updateNSView(_ view: PagerView, context: Context) {
         let pro = ProModel.shared
         // 組み直しが要るのは、台本・大きさ・書き方向・文字の大きさが変わったとき（きっかけは帯に描くだけなので組み直さない）
-        let layoutKey = LayoutKey(script: script, size: size, vertical: vertical, fontSize: fontSize,
+        let layoutKey = LayoutKey(source: source, size: size, vertical: vertical, fontSize: fontSize,
                                   lineSpacing: lineSpacing, charSpacing: charSpacing)
         // 大きさだけが変わったとき（窓や仕切りを動かしている最中）は、止まってから 1 回だけ組み直す
         if let old = view.layoutKey, old != layoutKey, old.size != layoutKey.size,
-           LayoutKey(script: old.script, size: layoutKey.size, vertical: old.vertical, fontSize: old.fontSize,
+           LayoutKey(source: old.source, size: layoutKey.size, vertical: old.vertical, fontSize: old.fontSize,
                      lineSpacing: old.lineSpacing, charSpacing: old.charSpacing) == layoutKey {
             view.scheduleRebuild(layoutKey)
             view.applyHighlight(selected: selected)
@@ -554,7 +573,7 @@ struct ScriptPager: NSViewRepresentable {
     }
 
     struct LayoutKey: Equatable {
-        var script: ScriptDocument
+        var source: ScriptSource
         var size: CGSize
         var vertical: Bool
         var fontSize: Double
@@ -575,13 +594,17 @@ private final class TextPiece: NSObject {
 
 /// 台本のページを表示する。ページごとに NSTextView を作り、同じ文章を順に流し込む。
 /// 1 行は ScenarioWriterSolo の書式どおり「人物名欄 ＋ 本文」の文字数で折り返す（紙の台本と同じ折り返し）。
-/// パネルに 1 行が入りきらないときは、文字を小さくして収める。ページの下（横書きは右）は、きっかけの帯
+/// パネルに 1 行が入りきらないときは、文字を小さくして収める。ページの下（横書きは右）は、きっかけの帯。
+/// PDF の台本は、PDF の 1 ページを 1 ページとして、帯のぶんを空けた残りに縦横の比のまま出す
 final class PagerView: NSView {
     var layoutKey: ScriptPager.LayoutKey?
     private let storage = NSTextStorage()
     private let layoutManager = NSLayoutManager()
-    private var textViews: [ScriptTextView] = []
+    /// ページ（文字の台本は ScriptTextView、PDF は PDFPageCanvas）
+    private var pageViews: [NSView] = []
     private var pageRanges: [NSRange] = []
+    /// PDF: ページの絵を置いた場所（ページの中の座標）
+    private var pdfRects: [NSRect] = []
     /// ページごとのきっかけの帯
     private var bands: [CueBandView] = []
     /// いま画面に出しているページ（見えている 1〜2 ページだけ並べる）
@@ -624,14 +647,14 @@ final class PagerView: NSView {
         show(page: min(pro.page, max(0, count - 1)), marks: lastMarks, notes: lastNotes, active: lastActive)
     }
 
-    var pageCount: Int { textViews.count }
+    var pageCount: Int { pageViews.count }
 
     // MARK: スクロール（ページを一列に並べ、巻物のように流す）
 
     private var vertical: Bool { layoutKey?.vertical ?? true }
     /// 1 ページの長さ（縦書きは幅、横書きは高さ。ページはこの向きに並ぶ）
     private var pageLength: CGFloat { max(1, vertical ? pageSize.width : pageSize.height) }
-    private var maxOffset: CGFloat { CGFloat(max(0, textViews.count - 1)) * pageLength }
+    private var maxOffset: CGFloat { CGFloat(max(0, pageViews.count - 1)) * pageLength }
     /// どこまで流したか（0 で 1 ページ目がちょうど見える。1 ページ流すと pageLength）
     private var offset: CGFloat = 0
     /// 組み直した直後は、目当てのページへ動かさずに飛ぶ
@@ -649,12 +672,12 @@ final class PagerView: NSView {
     private var lastActive: Set<UUID> = []
 
     /// いま主に見えているページ
-    var currentPage: Int { min(max(Int((offset / pageLength).rounded()), 0), max(0, textViews.count - 1)) }
+    var currentPage: Int { min(max(Int((offset / pageLength).rounded()), 0), max(0, pageViews.count - 1)) }
 
     /// マウスのホイール・横スクロール（チルト・横のダイヤル）、トラックパッドで流す。止めたところで止まる。
     /// 中身を動かす向きで決める: 縦書きはページが左へ進むので、中身が右へ動く向きが先。縦のホイールは下へが先
     override func scrollWheel(with event: NSEvent) {
-        guard !textViews.isEmpty else { return }
+        guard !pageViews.isEmpty else { return }
         var dx = event.scrollingDeltaX
         var dy = event.scrollingDeltaY
         // マウスのホイールは行の単位なので、点の単位に直す
@@ -671,7 +694,7 @@ final class PagerView: NSView {
 
     /// メイン機のスクロールの位置に合わせる（バックアップ機）
     func setScroll(_ pos: Double) {
-        guard !textViews.isEmpty else { return }
+        guard !pageViews.isEmpty else { return }
         stopAnimation()
         setOffset(CGFloat(pos) * pageLength)
         reportPage()
@@ -731,7 +754,7 @@ final class PagerView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         NSColor.separatorColor.setFill()
         for i in attached where i > 0 {
-            let f = textViews[i].frame
+            let f = pageViews[i].frame
             // 縦書きは前のページが右、横書きは上
             if vertical { NSRect(x: f.maxX - 0.5, y: 0, width: 1, height: bounds.height).fill() } else { NSRect(x: 0, y: f.minY - 0.5, width: bounds.width, height: 1).fill() }
         }
@@ -752,24 +775,15 @@ final class PagerView: NSView {
         pendingKey = nil
         layoutKey = key
         pageSize = CGSize(width: max(100, key.size.width), height: max(100, key.size.height))
-        let inner = CGSize(width: pageSize.width - inset * 2, height: pageSize.height - inset * 2)
         // きっかけの帯の分を空ける（縦書きは下、横書きは右）
         bandThickness = key.vertical ? min(170, max(90, pageSize.height * 0.3)) : min(260, max(150, pageSize.width * 0.38))
-        // 1 行の長さに「人物名欄 ＋ 本文」の字数が入る大きさにする（PDF の書き出しと同じ）
-        let lineChars = Double(key.script.characterLength + key.script.bodyLength)
-        let lineLength = Double((key.vertical ? inner.height : inner.width) - bandThickness)
-        // 文字間を空けると 1 字の長さが (1 ＋ 文字間) 倍になる
-        let perChar = 1 + key.charSpacing
-        fontSize = max(6, min(key.fontSize, (lineLength / (lineChars * perChar + 0.3) * 2).rounded(.down) / 2))
-        let lineEnd = CGFloat(lineChars * perChar * fontSize + fontSize * 0.3)
-
-        storage.setAttributedString(makeText(key.script, fontSize: fontSize, lineSpacing: key.lineSpacing, charSpacing: key.charSpacing))
-        for tv in textViews { tv.removeFromSuperview() }
+        for v in pageViews { v.removeFromSuperview() }
         for b in bands { b.removeFromSuperview() }
-        textViews = []
+        pageViews = []
         bands = []
         attached = []
         pageRanges = []
+        pdfRects = []
         while !layoutManager.textContainers.isEmpty { layoutManager.removeTextContainer(at: 0) }
         stopAnimation()
         justBuilt = true
@@ -777,6 +791,27 @@ final class PagerView: NSView {
         reportedPage = -1
         lastSelected = nil
         selectedRanges = []
+
+        let pages: [[String]]
+        switch key.source {
+        case .text(let script): pages = buildText(script, key)
+        case .pdf(let doc): pages = buildPDF(doc)
+        }
+        // 画面を描いている最中に状態を変えないよう、次の回にまわす
+        DispatchQueue.main.async { MainActor.assumeIsolated { ScriptPageIndex.shared.pages = pages } }
+    }
+
+    /// 文字の台本（ScenarioWriterSolo）をページに組む。ページごとにある行の uid を返す
+    private func buildText(_ script: ScriptDocument, _ key: ScriptPager.LayoutKey) -> [[String]] {
+        let inner = CGSize(width: pageSize.width - inset * 2, height: pageSize.height - inset * 2)
+        // 1 行の長さに「人物名欄 ＋ 本文」の字数が入る大きさにする（PDF の書き出しと同じ）
+        let lineChars = Double(script.characterLength + script.bodyLength)
+        let lineLength = Double((key.vertical ? inner.height : inner.width) - bandThickness)
+        // 文字間を空けると 1 字の長さが (1 ＋ 文字間) 倍になる
+        let perChar = 1 + key.charSpacing
+        fontSize = max(6, min(key.fontSize, (lineLength / (lineChars * perChar + 0.3) * 2).rounded(.down) / 2))
+        let lineEnd = CGFloat(lineChars * perChar * fontSize + fontSize * 0.3)
+        storage.setAttributedString(makeText(script, fontSize: fontSize, lineSpacing: key.lineSpacing, charSpacing: key.charSpacing))
 
         // 文章が全部収まるまでページ（入れ物）を足す
         var pages: [[String]] = []
@@ -801,7 +836,7 @@ final class PagerView: NSView {
             // 縦書きにすると表示の枠の縦横も入れ替わるので、ページの大きさに戻す
             tv.frame = NSRect(origin: .zero, size: pageSize)
             tv.anchorAt = { [weak self] index in self?.anchor(at: index) }
-            textViews.append(tv)
+            pageViews.append(tv)
             bands.append(CueBandView())
             layoutManager.ensureLayout(for: container)
             let range = layoutManager.characterRange(forGlyphRange: layoutManager.glyphRange(for: container), actualGlyphRange: nil)
@@ -809,15 +844,48 @@ final class PagerView: NSView {
             // このページにある行（台本の順）
             pages.append(lineRanges.filter { NSIntersectionRange($0.value, range).length > 0 }
                 .sorted { $0.value.location < $1.value.location }.map(\.key))
-            if range.length == 0 || NSMaxRange(range) >= storage.length || textViews.count > 3000 { break }
+            if range.length == 0 || NSMaxRange(range) >= storage.length || pageViews.count > 3000 { break }
         } while true
-        // 画面を描いている最中に状態を変えないよう、次の回にまわす
-        DispatchQueue.main.async { MainActor.assumeIsolated { ScriptPageIndex.shared.pages = pages } }
+        return pages
+    }
+
+    /// PDF の台本: PDF の 1 ページを 1 ページに。帯のぶんを空けた残りに、縦横の比のまま大きく出す
+    private func buildPDF(_ doc: PDFDocument) -> [[String]] {
+        storage.setAttributedString(NSAttributedString())
+        lineRanges = [:]
+        textStarts = [:]
+        let area = vertical
+            ? NSRect(x: inset, y: inset, width: pageSize.width - inset * 2, height: pageSize.height - inset * 2 - bandThickness)
+            : NSRect(x: inset, y: inset, width: pageSize.width - inset * 2 - bandThickness, height: pageSize.height - inset * 2)
+        var pages: [[String]] = []
+        for i in 0..<min(doc.pageCount, 3000) {
+            let canvas = PDFPageCanvas(frame: NSRect(origin: .zero, size: pageSize))
+            let page = doc.page(at: i)
+            var rect = area
+            if let page {
+                let box = page.bounds(for: .cropBox).size
+                let size = page.rotation % 180 != 0 ? CGSize(width: box.height, height: box.width) : box
+                if size.width > 0, size.height > 0, area.width > 0, area.height > 0 {
+                    let scale = min(area.width / size.width, area.height / size.height)
+                    let w = size.width * scale, h = size.height * scale
+                    rect = NSRect(x: area.midX - w / 2, y: area.midY - h / 2, width: w, height: h).integral
+                }
+            }
+            canvas.page = page
+            canvas.pageRect = rect
+            canvas.vertical = vertical
+            canvas.anchorAt = { [weak self] p in self?.pdfAnchor(page: i, along: self?.vertical ?? true ? p.x : p.y) }
+            pdfRects.append(rect)
+            pageViews.append(canvas)
+            bands.append(CueBandView())
+            pages.append([PDFAnchor.line(page: i)])
+        }
+        return pages
     }
 
     /// page のページを出す。いま見えているページと違えば、そこまで流す（組み直した直後は飛ぶ）
     func show(page: Int, marks: [CueMark], notes: [ScriptNote], active: Set<UUID>) {
-        guard textViews.indices.contains(page) else { return }
+        guard pageViews.indices.contains(page) else { return }
         let marksChanged = marks != lastMarks || active != lastActive || notes != lastNotes
         if marks != lastMarks { lanesDirty = true }
         lastMarks = marks
@@ -839,14 +907,14 @@ final class PagerView: NSView {
 
     /// 見えているページ（と帯）を並べる。新しく見えたページの帯は、文字の位置が決まってから描く
     private func layoutPages(refreshAll: Bool) {
-        guard !textViews.isEmpty else { return }
+        guard !pageViews.isEmpty else { return }
         let len = pageLength
         let first = max(0, Int((offset / len).rounded(.down)))
-        let last = min(textViews.count - 1, Int((offset / len).rounded(.up)))
+        let last = min(pageViews.count - 1, Int((offset / len).rounded(.up)))
         let visible = Set(first...max(first, last))
         var added = Set<Int>()
         for i in visible.sorted() {
-            let tv = textViews[i], band = bands[i]
+            let tv = pageViews[i], band = bands[i]
             // 縦書きは先のページが左（offset が増えると右へ動いて出てくる）、横書きは下
             let frame = vertical
                 ? NSRect(x: offset - CGFloat(i) * len, y: 0, width: pageSize.width, height: pageSize.height)
@@ -862,7 +930,7 @@ final class PagerView: NSView {
             }
         }
         for i in attached.subtracting(visible) {
-            textViews[i].removeFromSuperview()
+            pageViews[i].removeFromSuperview()
             bands[i].removeFromSuperview()
         }
         attached = visible
@@ -880,8 +948,8 @@ final class PagerView: NSView {
 
     /// そのページのきっかけを、帯に描く形にする
     private func updateBand(page: Int) {
-        guard textViews.indices.contains(page), window != nil else { return }
-        let tv = textViews[page]
+        if isPDF { return updatePDFBand(page: page) }
+        guard pageViews.indices.contains(page), window != nil, let tv = pageViews[page] as? ScriptTextView else { return }
         let band = bands[page]
         let range = pageRanges[page]
         // 文字の位置は、画面に見えている文字でないと取れない。スクロールの途中で半分しか見えていないページも
@@ -948,17 +1016,27 @@ final class PagerView: NSView {
     private func computeLanes() {
         lanesDirty = false
         laneOf = [:]
-        guard !textViews.isEmpty, storage.length > 0 else { return }
-        // 1 ポイントあたりの文字数（ページの文字数 ÷ 行を並べる長さ。おおよそ）
-        let along = max(1, (vertical ? pageSize.width : pageSize.height) - inset * 2)
-        let perPoint = Double(storage.length) / Double(CGFloat(textViews.count) * along)
+        guard !pageViews.isEmpty else { return }
+        // 位置の数え方: 文字の台本は文章の何文字目、PDF はページ × 1 万 ＋ ページの中の 1 万分率
+        let locate: (CueAnchor) -> Int?
+        let perPoint: Double
+        if isPDF, let r = pdfRects.first {
+            locate = { PDFAnchor.global($0) }
+            perPoint = Double(PDFAnchor.scale) / Double(max(1, vertical ? r.width : r.height))
+        } else {
+            guard storage.length > 0 else { return }
+            locate = { [unowned self] in self.location(of: $0) }
+            // 1 ポイントあたりの文字数（ページの文字数 ÷ 行を並べる長さ。おおよそ）
+            let along = max(1, (vertical ? pageSize.width : pageSize.height) - inset * 2)
+            perPoint = Double(storage.length) / Double(CGFloat(pageViews.count) * along)
+        }
         let nameFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
         let keyFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .bold)
         let lanes = vertical ? max(1, Int((bandThickness - 6) / 50)) : 4
         var spans: [(id: UUID, lo: Double, hi: Double)] = []
         for m in lastMarks {
-            guard let s = location(of: m.start) else { continue }
-            let e = m.end.flatMap { location(of: $0) }
+            guard let s = locate(m.start) else { continue }
+            let e = m.end.flatMap(locate)
             let lo = Double(min(s, e ?? s))
             var hi = Double(max(s, e ?? s))
             if vertical {
@@ -984,8 +1062,8 @@ final class PagerView: NSView {
     /// 帯の中の位置（縦書きは x、横書きは y） → きっかけの位置。いちばん近い行の頭の文字に結びつけ、
     /// クリックした位置とのずれを nudge にする（行間などにも、クリックしたところに線が始まる）
     private func anchorAt(page: Int, _ value: CGFloat) -> CueAnchor? {
-        guard textViews.indices.contains(page), let win = window else { return nil }
-        let tv = textViews[page]
+        if isPDF { return pdfAnchor(page: page, along: value) }
+        guard pageViews.indices.contains(page), let win = window, let tv = pageViews[page] as? ScriptTextView else { return nil }
         let range = pageRanges[page]
         guard range.length > 0 else { return nil }
         let saved = tv.frame
@@ -1040,6 +1118,15 @@ final class PagerView: NSView {
     /// 選んだ位置に色を付ける（文字数は変えないので、ページは変わらない）
     func applyHighlight(selected: CueAnchor?) {
         guard selected != lastSelected else { return }
+        if isPDF {
+            // PDF: 選んだ位置に線を引く
+            for (i, v) in pageViews.enumerated() {
+                guard let canvas = v as? PDFPageCanvas else { continue }
+                if let a = selected, PDFAnchor.page(a) == i { canvas.selection = pdfCoord(page: i, a) } else { canvas.selection = nil }
+            }
+            lastSelected = selected
+            return
+        }
         storage.beginEditing()
         for r in selectedRanges { storage.removeAttribute(.backgroundColor, range: r) }
         selectedRanges = []
@@ -1055,7 +1142,76 @@ final class PagerView: NSView {
         }
         storage.endEditing()
         lastSelected = selected
-        for i in attached { textViews[i].needsDisplay = true }
+        for i in attached { pageViews[i].needsDisplay = true }
+    }
+
+    // MARK: PDF の台本
+
+    private var isPDF: Bool {
+        if case .pdf = layoutKey?.source { return true }
+        return false
+    }
+
+    /// PDF の位置（1 万分率）→ ページの中の座標（縦書きは x、右の端が 0。横書きは y、上の端が 0）
+    private func pdfCoord(page: Int, _ a: CueAnchor) -> CGFloat {
+        guard pdfRects.indices.contains(page) else { return 0 }
+        let r = pdfRects[page]
+        let u = CGFloat((Double(a.offset) + (a.nudge ?? 0)) / Double(PDFAnchor.scale))
+        return vertical ? r.maxX - u * r.width : r.minY + u * r.height
+    }
+
+    /// ページの中の座標（縦書きは x、横書きは y）→ PDF の位置。ページの絵の外は端にそろえる
+    private func pdfAnchor(page: Int, along value: CGFloat) -> CueAnchor? {
+        guard pdfRects.indices.contains(page) else { return nil }
+        let r = pdfRects[page]
+        let u = vertical ? (r.maxX - value) / max(r.width, 1) : (value - r.minY) / max(r.height, 1)
+        return CueAnchor(line: PDFAnchor.line(page: page), offset: Int((min(max(u, 0), 1) * CGFloat(PDFAnchor.scale)).rounded()))
+    }
+
+    /// PDF のページのきっかけを、帯とページの上の線に描く
+    private func updatePDFBand(page: Int) {
+        guard pageViews.indices.contains(page), pdfRects.indices.contains(page) else { return }
+        let band = bands[page]
+        let vertical = self.vertical
+        // ページをまたぐ線は、ページの端まで引く（となりのページの線とつながる）
+        let startEdge = vertical ? pageSize.width : 0
+        let endEdge = vertical ? 0 : pageSize.height
+        if lanesDirty { computeLanes() }
+        var items: [CueBandView.Item] = []
+        var lines: [PDFPageCanvas.Line] = []
+        for m in lastMarks {
+            guard let s = PDFAnchor.global(m.start), let sp = PDFAnchor.page(m.start) else { continue }
+            let lit = lastActive.contains(m.id)
+            if let end = m.end, let e = PDFAnchor.global(end), let ep = PDFAnchor.page(end) {
+                let swapped = s > e
+                let (na, nb) = swapped ? (end, m.start) : (m.start, end)
+                let (pa, pb) = swapped ? (ep, sp) : (sp, ep)
+                // このページにかかっていなければ描かない
+                guard pa <= page, pb >= page else { continue }
+                let from = pa == page ? pdfCoord(page: page, na) : startEdge
+                let to = pb == page ? pdfCoord(page: page, nb) : endEdge
+                items.append(.init(mark: m, start: from, end: to, startsHere: pa == page, endsHere: pb == page, lit: lit,
+                                   swapped: swapped, lane: laneOf[m.id] ?? 0))
+                if pa == page { lines.append(.init(pos: from, color: m.color, lit: lit)) }
+                if pb == page { lines.append(.init(pos: to, color: m.color, lit: lit, isEnd: true)) }
+            } else if sp == page {
+                let p = pdfCoord(page: page, m.start)
+                items.append(.init(mark: m, start: p, end: nil, startsHere: true, endsHere: false, lit: lit, lane: laneOf[m.id] ?? 0))
+                lines.append(.init(pos: p, color: m.color, lit: lit))
+            }
+        }
+        band.notes = lastNotes.filter { PDFAnchor.page($0.anchor) == page }.map { ($0, pdfCoord(page: page, $0.anchor)) }
+        band.anchorAt = { [weak self] value in self?.pdfAnchor(page: page, along: value) }
+        // 印をドラッグしてずらす量は、1 万分率で数える（1 単位のポイント数）
+        let r = pdfRects[page]
+        band.fontSize = max(0.0001, (vertical ? r.width : r.height) / CGFloat(PDFAnchor.scale))
+        band.vertical = vertical
+        band.items = items
+        band.needsDisplay = true
+        if let canvas = pageViews[page] as? PDFPageCanvas {
+            canvas.lines = lines
+            canvas.needsDisplay = true
+        }
     }
 
     // MARK: 文章を作る
@@ -1480,41 +1636,149 @@ final class ScriptTextView: NSTextView {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         guard let a = anchor(event) else { return nil }
-        return MainActor.assumeIsolated { () -> NSMenu? in
-            let pro = ProModel.shared
-            pro.selected = a
-            let menu = NSMenu()
-            if AppModel.shared.showMode {
-                menu.addItem(NSMenuItem(title: L("本番モード中は結びつけを変えられません"), action: nil, keyEquivalent: ""))
-                return menu
-            }
-            if let cue = pro.selectedCue {
-                menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここのきっかけにする", cue.name, cue.label)) {
-                    pro.link(cue.id, to: a)
-                })
-                if pro.anchor(for: cue.id) != nil {
-                    menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここで止める（線の終わり）", cue.name, cue.label)) {
-                        pro.setEnd(cue.id, at: a)
-                    })
-                    if pro.end(for: cue.id) != nil {
-                        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の止める位置を外す", cue.name, cue.label)) {
-                            pro.setEnd(cue.id, at: nil)
-                        })
-                    }
-                }
+        return MainActor.assumeIsolated { scriptLinkMenu(at: a) }
+    }
+}
+
+/// PDF の台本の 1 ページ。ページの絵をそのまま出し（文字の大きさなどは変えられない）、きっかけの位置にうすい線を引く。
+/// クリックで位置を選び、右クリックでキューを結びつける・止める位置を決める（文字の台本と同じ）
+final class PDFPageCanvas: NSView {
+    struct Line {
+        /// 縦書きは x、横書きは y（このページの中の座標）
+        var pos: CGFloat
+        var color: NSColor
+        var lit: Bool
+        /// 止める位置（点線にする）
+        var isEnd = false
+    }
+
+    var page: PDFPage?
+    /// ページの絵を置く場所
+    var pageRect: NSRect = .zero
+    var vertical = true
+    var lines: [Line] = []
+    /// 選んだ位置（縦書きは x、横書きは y）
+    var selection: CGFloat? {
+        didSet { if selection != oldValue { needsDisplay = true } }
+    }
+    var anchorAt: ((NSPoint) -> CueAnchor?)?
+    /// ページの絵（画面の細かさで 1 回だけ描いておく。流すたびに PDF を描き直さない）
+    private var cache: NSImage?
+    private var cacheScale: CGFloat = 0
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        // PDF は白い紙に描く前提なので、ダークモードでも紙は白
+        NSColor.white.setFill()
+        pageRect.fill()
+        image()?.draw(in: pageRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        NSColor.separatorColor.setStroke()
+        NSBezierPath(rect: pageRect.insetBy(dx: -0.5, dy: -0.5)).stroke()
+        // きっかけの位置（帯の線の始まり・終わりと同じ位置）。文字を隠さないよう、細くうすく
+        for l in lines {
+            let path = NSBezierPath()
+            if vertical {
+                path.move(to: NSPoint(x: l.pos, y: pageRect.minY))
+                path.line(to: NSPoint(x: l.pos, y: pageRect.maxY))
             } else {
-                menu.addItem(NSMenuItem(title: L("先にキーかリストの曲を選ぶと、ここに結びつけられます"), action: nil, keyEquivalent: ""))
+                path.move(to: NSPoint(x: pageRect.minX, y: l.pos))
+                path.line(to: NSPoint(x: pageRect.maxX, y: l.pos))
             }
-            let linked = pro.marks(for: a.line)
-            if !linked.isEmpty {
-                menu.addItem(.separator())
-                for m in linked {
-                    menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の結びつきを外す", m.name, m.label)) { pro.unlink(m.id) })
-                }
-            }
-            return menu
+            path.lineWidth = l.lit ? 2.5 : 1.5
+            if l.isEnd { path.setLineDash([5, 3], count: 2, phase: 0) }
+            l.color.withAlphaComponent(l.lit ? 0.8 : 0.45).setStroke()
+            path.stroke()
+        }
+        if let s = selection {
+            let r = vertical ? NSRect(x: s - 1, y: pageRect.minY, width: 2, height: pageRect.height)
+                : NSRect(x: pageRect.minX, y: s - 1, width: pageRect.width, height: 2)
+            NSColor.controlAccentColor.withAlphaComponent(0.8).setFill()
+            r.fill()
         }
     }
+
+    private func image() -> NSImage? {
+        let scale = window?.backingScaleFactor ?? 2
+        if let cache, cacheScale == scale { return cache }
+        guard let page, pageRect.width >= 1, pageRect.height >= 1 else { return nil }
+        let w = Int(pageRect.width * scale), h = Int(pageRect.height * scale)
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h, bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0),
+              let ctx = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+        let cg = ctx.cgContext
+        cg.setFillColor(.white)
+        cg.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        // 回転したページも、回した後の大きさで収める
+        let box = page.bounds(for: .cropBox).size
+        let pageWidth = page.rotation % 180 != 0 ? box.height : box.width
+        let k = CGFloat(w) / max(pageWidth, 1)
+        cg.scaleBy(x: k, y: k)
+        cg.interpolationQuality = .high
+        page.draw(with: .cropBox, to: cg)
+        let img = NSImage(size: pageRect.size)
+        img.addRepresentation(rep)
+        cache = img
+        cacheScale = scale
+        return img
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        AppModel.endEditing()
+        let a = anchorAt?(convert(event.locationInWindow, from: nil))
+        MainActor.assumeIsolated { ProModel.shared.selected = a }
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let a = anchorAt?(convert(event.locationInWindow, from: nil)) else { return nil }
+        return MainActor.assumeIsolated { scriptLinkMenu(at: a) }
+    }
+}
+
+/// 台本（文字・PDF）の右クリック: 選んでいるキー・曲をここに結びつける・ここで止める、この行の結びつきを外す
+@MainActor
+func scriptLinkMenu(at a: CueAnchor) -> NSMenu {
+    let pro = ProModel.shared
+    pro.selected = a
+    let menu = NSMenu()
+    if AppModel.shared.showMode {
+        menu.addItem(NSMenuItem(title: L("本番モード中は結びつけを変えられません"), action: nil, keyEquivalent: ""))
+        return menu
+    }
+    if let cue = pro.selectedCue {
+        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここのきっかけにする", cue.name, cue.label)) {
+            pro.link(cue.id, to: a)
+        })
+        if pro.anchor(for: cue.id) != nil {
+            menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここで止める（線の終わり）", cue.name, cue.label)) {
+                pro.setEnd(cue.id, at: a)
+            })
+            if pro.end(for: cue.id) != nil {
+                menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の止める位置を外す", cue.name, cue.label)) {
+                    pro.setEnd(cue.id, at: nil)
+                })
+            }
+        }
+    } else {
+        menu.addItem(NSMenuItem(title: L("先にキーかリストの曲を選ぶと、ここに結びつけられます"), action: nil, keyEquivalent: ""))
+    }
+    let linked = pro.marks(for: a.line)
+    if !linked.isEmpty {
+        menu.addItem(.separator())
+        for m in linked {
+            menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の結びつきを外す", m.name, m.label)) { pro.unlink(m.id) })
+        }
+    }
+    return menu
 }
 
 /// 押したときに処理を呼ぶメニュー項目

@@ -74,7 +74,7 @@ Version 5.0.2 / October 2026
 
 ### Script link
 
-- Shows a ScenarioWriterSolo script (.scwd) beside the main window
+- Shows a ScenarioWriterSolo script (.scwd) or an ordinary **PDF** script beside the main window
 - Links keys and list tracks to **positions in the script text**
 - A **cue band** under each page, like a sound operator’s marked-up script
 
@@ -157,7 +157,7 @@ This is used to connect to the backup Mac on the same network. Click **Allow**.<
 <div>
 
 1. In the script panel, click **⋯ → Import Script…**
-2. Choose a ScenarioWriterSolo script (**.scwd**)
+2. Choose a ScenarioWriterSolo script (**.scwd**) or a **PDF** (see “PDF scripts” two pages on)
 3. The script is copied into the cue sheet
 
 - After editing the script, use **Reload Script**
@@ -188,6 +188,29 @@ This is used to connect to the backup Mac on the same network. Click **Allow**.<
 </div>
 
 <span class="small">Vertical: the cue band is under the page (lines run right to left). Horizontal: it is on the right.</span>
+
+---
+
+## PDF scripts (other than ScenarioWriterSolo)
+
+<div class="cols">
+<div>
+
+- **Import Script…** also accepts a **PDF** (each page shown as it is)
+- **Text size and spacing cannot be changed**
+- **V / H** is the script’s direction (V: band below, <kbd>←</kbd> is next / H: band on the right)
+- Page turning and the cue band work as with a .scwd script
+- A **colored line** is also drawn on the page at each cue
+
+<span class="small">Choose V / H before linking (changing it later moves the lines). Password-protected PDFs cannot be read.</span>
+
+</div>
+<div class="shot">
+
+![h:500](img/en-07-pdf.png)
+
+</div>
+</div>
 
 ---
 
@@ -334,7 +357,7 @@ The line starts exactly where you clicked (even between lines).
 Pro data is stored inside the cue sheet (.ccsc).
 
 - **pro.json**: links, stop points, line positions, memos, notes, display settings, and the output for each key or track
-- **Script/**: a copy of the imported script
+- **Script/**: a copy of the imported script (.scwd or PDF)
 
 </div>
 <div>
@@ -479,9 +502,10 @@ Pro data is stored inside the cue sheet (.ccsc).
 
 | Problem | What to check |
 |---|---|
-| A cue point says “Not found in the script” | The line was removed when the script was edited. Link it again in the band |
-| The script text is small | A line does not fit. Widen the panel, hide the inspector, or adjust widths and letter spacing |
-| No sound from a chosen device | See the message in the Outputs window. Is the device connected and usable in the Mac’s Sound settings? |
+| Cue point “Not found” | The line was removed from the script. Link it again |
+| The script text is small | A line does not fit. Widen the panel or adjust widths |
+| A PDF script is small or unreadable | Widen the panel (text size is fixed). Locked PDFs cannot be read |
+| No sound from a chosen device | See the Outputs window. Is the device connected and usable? |
 | The backup Mac cannot be found | Same network? Local network permission? Connect by IP address |
 | The backup plays different sounds | Do the cue sheets match (Backup window)? Send again from the main Mac |
 | The backup Mac cannot be operated | That is by design. Use Take Over to operate it |

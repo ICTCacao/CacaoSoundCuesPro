@@ -1,14 +1,16 @@
 import AppKit
 import CacaoSoundCuesCore
+import PDFKit
 import SwiftUI
 import UniformTypeIdentifiers
 
 // Pro 版の台本連動。ScenarioWriterSolo の台本（.scwd）をキューシートに取り込み、
 // キー・リストの曲を台本の行（きっかけ）に結びつける。
+// ふつうの PDF の台本も取り込める（文字の大きさなどは変えられない。ページ送りと、きっかけの帯は同じ）。
 //
 // キューシート（.ccsc）の中に置くもの（無料版は触らないので、無料版で開いて保存しても消えない）:
 //   pro.json        … 台本のファイル名・元の場所・結びつき（キュー/曲の ID → 台本の行の uid）・表示の設定
-//   Script/<名前>.scwd … 取り込んだ台本のコピー
+//   Script/<名前>.scwd … 取り込んだ台本のコピー（PDF の台本なら Script/<名前>.pdf）
 
 extension UTType {
     static let scenarioWriterScript = UTType(filenameExtension: "scwd") ?? .json
@@ -137,6 +139,22 @@ struct ScriptDocument: Decodable, Equatable {
     }
 }
 
+/// PDF の台本のきっかけの位置。line は "pdf-<ページの番号（0 から）>"、offset はページの中の位置を
+/// 1 万分率で（縦書きは右の端から左へ、横書きは上の端から下へ）。nudge も同じ 1 万分率
+enum PDFAnchor {
+    static let scale = 10000
+
+    static func line(page: Int) -> String { "pdf-\(page)" }
+
+    static func page(_ a: CueAnchor) -> Int? {
+        guard a.line.hasPrefix("pdf-") else { return nil }
+        return Int(a.line.dropFirst(4))
+    }
+
+    /// 台本全体の中の位置（ページ × 1 万 ＋ ページの中の位置）。帯の段を決める・線の向きを比べるのに使う
+    static func global(_ a: CueAnchor) -> Int? { page(a).map { $0 * scale + min(max(a.offset, 0), scale) } }
+}
+
 /// きっかけの位置: 台本の行と、その行の本文の何文字目か（0 なら行の頭）
 struct CueAnchor: Codable, Equatable, Hashable {
     var line: String
@@ -230,6 +248,21 @@ final class ProModel {
 
     private(set) var data = ProData()
     private(set) var script: ScriptDocument?
+    /// ふつうの PDF の台本（ScenarioWriterSolo の台本の代わり）
+    private(set) var pdf: PDFDocument?
+    /// 台本（.scwd か PDF）があるか
+    var hasScript: Bool { script != nil || pdf != nil }
+    var isPDF: Bool { pdf != nil }
+    /// 台本の題名（PDF は書類の題名か、ファイルの名前）
+    var scriptTitle: String {
+        if let script { return script.title }
+        if let pdf {
+            if let t = pdf.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String,
+               !t.trimmingCharacters(in: .whitespaces).isEmpty { return t }
+            return ((data.script ?? "") as NSString).deletingPathExtension
+        }
+        return ""
+    }
     /// 台本のパネルを出すか（この Mac に保存）
     var showPanel = UserDefaults.standard.object(forKey: "pro.showScript") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showPanel, forKey: "pro.showScript") }
@@ -262,6 +295,7 @@ final class ProModel {
     func reset() {
         data = ProData()
         script = nil
+        pdf = nil
         pendingScript = nil
         packageURL = nil
         page = 0
@@ -278,7 +312,7 @@ final class ProModel {
         }
         if let name = data.script {
             let file = url.appendingPathComponent(Self.scriptFolder).appendingPathComponent(name)
-            script = try? ScriptDocument.load(file)
+            if Self.isPDFFile(file) { pdf = Self.loadPDF(file) } else { script = try? ScriptDocument.load(file) }
         }
     }
 
@@ -315,33 +349,69 @@ final class ProModel {
         packageURL = url
     }
 
-    /// 台本（.scwd）を選んで取り込む
+    static func isPDFFile(_ url: URL) -> Bool { url.pathExtension.lowercased() == "pdf" }
+
+    /// PDF は中身を読んでから開く（元のファイルを動かしたり、キューシートに写したりしても困らないように）
+    static func loadPDF(_ url: URL) -> PDFDocument? {
+        guard let d = try? Data(contentsOf: url), let doc = PDFDocument(data: d), doc.pageCount > 0, !doc.isLocked else { return nil }
+        return doc
+    }
+
+    /// 台本（.scwd か PDF）を選んで取り込む
     func importScript() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.scenarioWriterScript, .json]
-        panel.message = L("ScenarioWriterSolo の台本（.scwd）を選んでください")
+        panel.allowedContentTypes = [.scenarioWriterScript, .pdf, .json]
+        panel.message = L("ScenarioWriterSolo の台本（.scwd）か、PDF の台本を選んでください")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importScript(from: url)
     }
 
     func importScript(from url: URL) {
-        do {
-            let doc = try ScriptDocument.load(url)
-            script = doc
-            pendingScript = url
-            data.script = url.lastPathComponent
-            data.scriptSource = url.path
-            page = 0
-            selected = nil
-            showPanel = true
-            model.markDirty()
-            let missing = data.links.values.filter { doc.line($0.line) == nil }.count
-            if missing > 0 {
-                model.message = L("台本の中に見つからない行が %d か所あります。インスペクタの「きっかけ」を確かめてください。", missing)
+        let missing: Int
+        if Self.isPDFFile(url) {
+            guard let doc = Self.loadPDF(url) else {
+                model.message = L("PDF を読み込めません（鍵が掛かっていないか確かめてください）: %@", url.lastPathComponent)
+                return
             }
-        } catch {
-            model.message = L("台本を読み込めません: %@", url.lastPathComponent)
+            script = nil
+            pdf = doc
+            missing = data.links.values.filter { !contains($0) }.count
+        } else {
+            guard let doc = try? ScriptDocument.load(url) else {
+                model.message = L("台本を読み込めません: %@", url.lastPathComponent)
+                return
+            }
+            pdf = nil
+            script = doc
+            missing = data.links.values.filter { !contains($0) }.count
         }
+        pendingScript = url
+        data.script = url.lastPathComponent
+        data.scriptSource = url.path
+        page = 0
+        selected = nil
+        showPanel = true
+        model.markDirty()
+        if missing > 0 {
+            model.message = L("台本の中に見つからない行が %d か所あります。インスペクタの「きっかけ」を確かめてください。", missing)
+        }
+    }
+
+    /// その位置が、いまの台本の中にあるか
+    func contains(_ a: CueAnchor) -> Bool {
+        if let pdf { return PDFAnchor.page(a).map { $0 >= 0 && $0 < pdf.pageCount } ?? false }
+        return script?.line(a.line) != nil
+    }
+
+    /// きっかけの位置の短い説明（インスペクタ用）。PDF は「3 ページ・右から 40%」
+    func summary(_ anchor: CueAnchor, around: Int = 10) -> String? {
+        if pdf != nil {
+            guard contains(anchor), let p = PDFAnchor.page(anchor) else { return nil }
+            let percent = Int((Double(anchor.offset) + (anchor.nudge ?? 0)) / Double(PDFAnchor.scale) * 100)
+            return data.vertical ? L("%d ページ・右から %d%%", p + 1, min(max(percent, 0), 100))
+                : L("%d ページ・上から %d%%", p + 1, min(max(percent, 0), 100))
+        }
+        return script?.summary(anchor, around: around)
     }
 
     /// 取り込んだときの元の台本から、もう一度読み込む（台本を直したとき）
@@ -355,6 +425,7 @@ final class ProModel {
 
     func removeScript() {
         script = nil
+        pdf = nil
         pendingScript = nil
         data.script = nil
         data.scriptSource = nil
@@ -560,7 +631,7 @@ final class ProModel {
 
     /// ← →: 台本のページを送る。縦書きは本と同じく ← が次のページ
     func handleKey(_ code: UInt16) -> Bool {
-        guard script != nil, showPanel, code == 123 || code == 124 else { return false }
+        guard hasScript, showPanel, code == 123 || code == 124 else { return false }
         let forward = (code == 123) == data.vertical
         turn(forward ? 1 : -1)
         return true

@@ -10,13 +10,13 @@ struct ProCueLinkRow: View {
     var body: some View {
         // 出力の系統（系統が 2 つ以上あるとき）
         ProOutputRow(cueID: cueID)
-        if let script = pro.script {
+        if pro.hasScript {
             VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Label(L("きっかけ"), systemImage: "text.book.closed")
                     .fixedSize()
                 if let anchor = pro.anchor(for: cueID) {
-                    if let text = script.summary(anchor) {
+                    if let text = pro.summary(anchor) {
                         Text(text)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -52,7 +52,7 @@ struct ProCueLinkRow: View {
                               text: Binding(get: { pro.memo(for: cueID) }, set: { pro.setMemo(cueID, $0) }))
                         .textFieldStyle(.roundedBorder)
                         .disabled(model.showMode)
-                    if let end = pro.end(for: cueID), let text = script.summary(end, around: 6) {
+                    if let end = pro.end(for: cueID), let text = pro.summary(end, around: 6) {
                         Text(L("止める: %@", text))
                             .font(.caption)
                             .foregroundStyle(.secondary)

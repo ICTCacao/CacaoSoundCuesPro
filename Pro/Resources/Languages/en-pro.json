@@ -81,7 +81,6 @@
         "ドラッグで台本の幅を変える（右端まで引くと台本を窓いっぱいに）": "Drag to resize the script (drag to the right edge to fill the window)",
         "台本": "Script",
         "台本のパネルを開く": "Open the script panel",
-        "台本（ScenarioWriterSolo）のパネルを出す・畳む": "Show or hide the script (ScenarioWriterSolo) panel",
         "出力の系統（機器と左右のチャンネル）を決める": "Set up outputs (devices and left/right channels)",
         "縦": "V",
         "横": "H",
@@ -106,7 +105,6 @@
         "広く空ける": "Very Loose",
         "台本を外す": "Remove Script",
         "台本のパネルを左に畳む": "Fold the script panel to the left",
-        "ScenarioWriterSolo の台本（.scwd）を取り込むと、ここに台本が出ます。\nキーやリストの曲を、台本の行（きっかけ）に結びつけられます。": "Import a ScenarioWriterSolo script (.scwd) to show it here.\nYou can then link keys and list tracks to lines in the script (cues).",
         "← → でページ送り": "← → to turn pages",
         "次のページ": "Next page",
         "再生中の音はありません": "Nothing is playing",
@@ -130,6 +128,13 @@
         "「%@」（%@）の結びつきを外す": "Unlink “%@” (%@)",
         "ペアKey": "Pair Key",
         "ペアKeyが違います": "Wrong pair key",
-        "「%@」が違うペアKeyでつなごうとしました": "“%@” tried to connect with a wrong pair key"
+        "「%@」が違うペアKeyでつなごうとしました": "“%@” tried to connect with a wrong pair key",
+        "台本（ScenarioWriterSolo・PDF）のパネルを出す・畳む": "Show or hide the script panel (ScenarioWriterSolo or PDF)",
+        "ScenarioWriterSolo の台本（.scwd）か PDF の台本を取り込むと、ここに台本が出ます。\nキーやリストの曲を、台本の位置（きっかけ）に結びつけられます。": "Import a ScenarioWriterSolo script (.scwd) or a PDF script to show it here.\nYou can then link keys and list tracks to positions in the script (cues).",
+        "ScenarioWriterSolo の台本（.scwd）か、PDF の台本を選んでください": "Choose a ScenarioWriterSolo script (.scwd) or a PDF script",
+        "PDF を読み込めません（鍵が掛かっていないか確かめてください）: %@": "Cannot read the PDF (check that it is not password-protected): %@",
+        "%d ページ・右から %d%%": "Page %d, %d%% from the right",
+        "%d ページ・上から %d%%": "Page %d, %d%% from the top",
+        "PDF の台本の向き（縦書きは帯が下で ← が次のページ、横書きは帯が右）": "Direction of the PDF script (vertical: cue band below, ← is the next page; horizontal: cue band on the right)"
     }
 }
