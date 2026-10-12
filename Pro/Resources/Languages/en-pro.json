@@ -41,8 +41,6 @@
         "待ち受けできません: %@": "Cannot listen: %@",
         "メイン機と切れました": "Lost connection to the main Mac",
         "バックアップ機と切れました": "Lost connection to the backup Mac",
-        "番号が違います": "Wrong pairing code",
-        "「%@」が番号違いでつなごうとしました": "“%@” tried to connect with a wrong code",
         "「%@」とつながりました": "Connected to “%@”",
         "つなげません: %@": "Cannot connect: %@",
         "「%@」が引き継ぎました。このMacはバックアップ機です": "“%@” has taken over. This Mac is now the backup",
@@ -72,7 +70,6 @@
         "キューシートは同じです": "Cue sheets match",
         "キューシートが違います（未保存の変更も含む）": "Cue sheets differ (including unsaved changes)",
         "キューシートを照らし合わせられません": "Cannot compare the cue sheets",
-        "組にする番号": "Pairing code",
         "（初めてのバックアップ機に入れてもらう）": "(enter it on a new backup Mac)",
         "このMac「%@」で待ち受けています（ポート %d）": "Listening on this Mac “%@” (port %d)",
         "バックアップ機へキューシートを送る": "Send Cue Sheet to Backup",
@@ -130,6 +127,9 @@
         "先にキーかリストの曲を選ぶと、ここに結びつけられます": "Select a key or list track first to link it here",
         "ここにメモを書く…": "Write a Note Here…",
         "「%@」（%@）の止める位置を外す": "Remove the stop point of “%@” (%@)",
-        "「%@」（%@）の結びつきを外す": "Unlink “%@” (%@)"
+        "「%@」（%@）の結びつきを外す": "Unlink “%@” (%@)",
+        "ペアKey": "Pair Key",
+        "ペアKeyが違います": "Wrong pair key",
+        "「%@」が違うペアKeyでつなごうとしました": "“%@” tried to connect with a wrong pair key"
     }
 }

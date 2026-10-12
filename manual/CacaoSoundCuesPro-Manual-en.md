@@ -413,11 +413,11 @@ Pro data is stored inside the cue sheet (.ccsc).
 <div class="cols-wide">
 <div>
 
-1. **Main Mac**: **Backup** in the top bar → **Main Mac**. A 4-digit **pairing code** appears
-2. **Backup Mac**: **Backup Mac** → click **Connect** next to the main Mac found (or **connect by IP address**). For a new partner, also enter the **code**
+1. **Main Mac**: **Backup** in the top bar → **Main Mac**. A 4-digit **pair key** appears
+2. **Backup Mac**: **Backup Mac** → click **Connect** next to the main Mac found (or **connect by IP address**). For a new partner, also enter the **pair key**
 3. When connected, the dot turns **green** and the latency (ms) is shown
 
-<span class="small">Paired Macs are remembered, so the code is not needed next time.</span>
+<span class="small">Paired Macs are remembered, so the pair key is not needed next time.</span>
 
 </div>
 <div class="shot">

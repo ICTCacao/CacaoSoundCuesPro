@@ -8,7 +8,7 @@ import SwiftUI
 // メイン機の操作（鳴らす・止める・Standby を動かす…）を、そのままバックアップ機へ送り、バックアップ機も同じように鳴らす。
 // 音は送らない。2 台とも自分の機器から鳴らし、ミキサーで人が切り替える。
 // つなぎ方: 同じネットワーク。メイン機が待ち受け（Bonjour で名乗る。IP でもつなげる）、バックアップ機がつなぐ。
-// 初めての相手とは、メイン機に出る 4 桁の番号で組にする（次からは覚えている）。
+// 初めての相手とは、メイン機に出る 4 桁のペアKeyで組にする（次からは覚えている）。
 // 引き継ぐと世代（generation）が上がる。メイン機どうしが出会ったら、世代の古い方がバックアップになる（役の入れ替え）
 
 /// 送る操作（どれも AppModel の操作の入口と同じ。キーではなく「何をしたか」を送るので、画面の選び方でずれない）
@@ -77,7 +77,7 @@ final class ProSync {
     /// 相手のキューシートの名前と印（同じか確かめる）
     private(set) var peerSheet: (name: String, hash: String, dirty: Bool)?
     private(set) var mySheetHash = ""
-    /// メイン機に出す、組にするための番号
+    /// メイン機に出す、組にするためのペアKey
     private(set) var code = String(format: "%04d", Int.random(in: 0...9999))
     /// バックアップ機で見つかったメイン機
     private(set) var found: [NWBrowser.Result] = []
@@ -425,11 +425,11 @@ final class ProSync {
         lastHeard = Date()
         switch m {
         case .hello(let h):
-            // メイン機: 組の相手か、番号が合えばつなぐ
+            // メイン機: 組の相手か、ペアKeyが合えばつなぐ
             let known = paired.contains(h.id)
             guard known || h.code == code else {
-                send(.welcome(ok: false, reason: L("番号が違います"), name: myName, id: myID, generation: generation, demote: false))
-                status = L("「%@」が番号違いでつなごうとしました", h.name)
+                send(.welcome(ok: false, reason: L("ペアKeyが違います"), name: myName, id: myID, generation: generation, demote: false))
+                status = L("「%@」が違うペアKeyでつなごうとしました", h.name)
                 return
             }
             paired.insert(h.id)
@@ -776,7 +776,7 @@ struct SyncSheet: View {
     private var mainPane: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("組にする番号"))
+                Text(L("ペアKey"))
                 Text(sync.code).font(.title2.monospacedDigit().bold())
                 Text(L("（初めてのバックアップ機に入れてもらう）")).font(.caption).foregroundStyle(.secondary)
             }
@@ -818,7 +818,7 @@ struct SyncSheet: View {
                         .disabled(host.isEmpty)
                 }
                 HStack {
-                    Text(L("組にする番号"))
+                    Text(L("ペアKey"))
                     TextField("0000", text: $code).textFieldStyle(.roundedBorder).frame(width: 80)
                     Text(L("（初めてのメイン機のとき。メイン機の画面に出ています）")).font(.caption).foregroundStyle(.secondary)
                 }

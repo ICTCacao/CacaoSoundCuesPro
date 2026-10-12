@@ -114,8 +114,12 @@ private struct FoldedScriptStrip: View {
             VStack(spacing: 10) {
                 Image(systemName: "chevron.right")
                 Image(systemName: "text.book.closed")
+                // 細い帯に 1 行で収める（英語の Script も折れないように）
                 Text(L("台本"))
-                    .font(.caption)
+                    .font(.system(size: 9))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .fixedSize()
                 Spacer()
             }
             .padding(.top, 12)
@@ -407,7 +411,8 @@ struct PlayingWaveStrip: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(Color.black.opacity(0.25))
+        // ライトでもダークでもなじむ、うすい背景
+        .background(Color.primary.opacity(0.06))
     }
 
     private func row(_ v: Voice) -> some View {
