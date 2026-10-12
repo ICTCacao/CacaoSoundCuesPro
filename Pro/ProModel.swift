@@ -141,6 +141,9 @@ struct ScriptDocument: Decodable, Equatable {
 struct CueAnchor: Codable, Equatable, Hashable {
     var line: String
     var offset: Int = 0
+    /// 線の位置を文字からずらす量（文字の大きさに対する割合。台本の進む向きが＋）。
+    /// 帯の上の印をドラッグして、行間などに合わせる
+    var nudge: Double?
 
     init(line: String, offset: Int = 0) {
         self.line = line
@@ -157,7 +160,15 @@ struct CueAnchor: Codable, Equatable, Hashable {
         let c = try d.container(keyedBy: CodingKeys.self)
         line = try c.decode(String.self, forKey: .line)
         offset = (try? c.decode(Int.self, forKey: .offset)) ?? 0
+        nudge = try? c.decode(Double.self, forKey: .nudge)
     }
+}
+
+/// 帯に書く、きっかけに属さないメモ（紙の台本の余白に鉛筆で書くもの）
+struct ScriptNote: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var anchor: CueAnchor
+    var text: String
 }
 
 /// pro.json の中身
@@ -173,9 +184,18 @@ struct ProData: Codable, Equatable {
     var ends: [String: CueAnchor] = [:]
     /// きっかけのメモ（帯のラベルの下に出す。例「Piano」）
     var memos: [String: String] = [:]
+    /// 帯に書いたメモ（きっかけに属さないもの）
+    var notes: [ScriptNote] = []
     /// 縦書きで表示する
     var vertical = true
     var fontSize: Double = 16
+    /// 行間（文字の大きさに対する割合。0.2 で文字の 2 割）
+    var lineSpacing: Double = 0.2
+    /// 文字間（文字の大きさに対する割合。0 で詰めない・空けない）
+    var charSpacing: Double = 0
+    /// 人物名欄・本文 1 行の字数（nil なら台本〈ScenarioWriterSolo の書式〉のとおり）
+    var nameChars: Int?
+    var bodyChars: Int?
     /// Standby が移ったら、そのきっかけのページへ自動で送る（ふだんは OFF。自分でページを送る）
     var autoFollow = false
 
@@ -188,8 +208,13 @@ struct ProData: Codable, Equatable {
         links = (try? c.decode([String: CueAnchor].self, forKey: .links)) ?? [:]
         ends = (try? c.decode([String: CueAnchor].self, forKey: .ends)) ?? [:]
         memos = (try? c.decode([String: String].self, forKey: .memos)) ?? [:]
+        notes = (try? c.decode([ScriptNote].self, forKey: .notes)) ?? []
         vertical = (try? c.decode(Bool.self, forKey: .vertical)) ?? true
         fontSize = (try? c.decode(Double.self, forKey: .fontSize)) ?? 16
+        lineSpacing = (try? c.decode(Double.self, forKey: .lineSpacing)) ?? 0.2
+        charSpacing = (try? c.decode(Double.self, forKey: .charSpacing)) ?? 0
+        nameChars = try? c.decode(Int.self, forKey: .nameChars)
+        bodyChars = try? c.decode(Int.self, forKey: .bodyChars)
         autoFollow = (try? c.decode(Bool.self, forKey: .autoFollow)) ?? false
     }
 }
@@ -328,6 +353,18 @@ final class ProModel {
 
     func setVertical(_ v: Bool) { data.vertical = v; page = 0; model.markDirty() }
     func setFontSize(_ s: Double) { data.fontSize = s; model.markDirty() }
+    func setLineSpacing(_ s: Double) { data.lineSpacing = s; model.markDirty() }
+    func setCharSpacing(_ s: Double) { data.charSpacing = s; model.markDirty() }
+    func setNameChars(_ n: Int?) { data.nameChars = n; model.markDirty() }
+    func setBodyChars(_ n: Int?) { data.bodyChars = n; model.markDirty() }
+
+    /// 表示に使う台本（1 行の字数をキューシートの設定で上書きしたもの）
+    var displayScript: ScriptDocument? {
+        guard var s = script else { return nil }
+        if let n = data.nameChars { s.characterLength = n }
+        if let n = data.bodyChars { s.bodyLength = n }
+        return s
+    }
     func setAutoFollow(_ v: Bool) { data.autoFollow = v; model.markDirty() }
 
     // MARK: - 結びつき
@@ -353,11 +390,55 @@ final class ProModel {
         model.markDirty()
     }
 
+    /// 線の始まり（isEnd なら終わり）の位置を、文字からずらす（nil で文字の位置に戻す）
+    func setNudge(_ cueID: UUID, isEnd: Bool, _ value: Double?) {
+        let key = cueID.uuidString
+        let v = value.map { ($0 * 100).rounded() / 100 }
+        if isEnd {
+            guard data.ends[key] != nil else { return }
+            data.ends[key]?.nudge = v == 0 ? nil : v
+        } else {
+            guard data.links[key] != nil else { return }
+            data.links[key]?.nudge = v == 0 ? nil : v
+        }
+        model.markDirty()
+    }
+
     func memo(for cueID: UUID) -> String { data.memos[cueID.uuidString] ?? "" }
 
     func setMemo(_ cueID: UUID, _ text: String) {
         data.memos[cueID.uuidString] = text.isEmpty ? nil : text
         model.markDirty()
+    }
+
+    /// 帯にメモを書く（空なら書かない）
+    func addNote(at anchor: CueAnchor, _ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        data.notes.append(ScriptNote(anchor: anchor, text: t))
+        model.markDirty()
+    }
+
+    /// 帯のメモを直す（空にしたら消す）
+    func setNote(_ id: UUID, _ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { data.notes.removeAll { $0.id == id } } else if let i = data.notes.firstIndex(where: { $0.id == id }) { data.notes[i].text = t }
+        model.markDirty()
+    }
+
+    /// 文字を 1 行入れてもらう（メモ用）。取り消したら nil
+    func askText(title: String, initial: String) -> String? {
+        let alert = NSAlert()
+        alert.messageText = title
+        let field = NSTextField(string: initial)
+        field.frame = NSRect(x: 0, y: 0, width: 300, height: 24)
+        alert.accessoryView = field
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: L("キャンセル"))
+        alert.window.initialFirstResponder = field
+        let ok = alert.runModal() == .alertFirstButtonReturn
+        AppModel.endEditing()
+        return ok ? field.stringValue : nil
     }
 
     /// 結びついたキュー全部（帯に描く）
@@ -386,6 +467,37 @@ final class ProModel {
     }
 
     /// いま選んでいるキュー（キーかリストの曲）。台本の行を右クリックして結びつける相手
+    /// その印の音が鳴っているか
+    func isPlaying(markID: UUID) -> Bool {
+        model.status.contains { $0.tag == markID && !$0.armed }
+    }
+
+    /// その印の音だけを止める（Esc の全停止ではなく、その音のフェードアウト設定で）。
+    /// リストの曲は、曲だけ止めると次の曲が続いて鳴ることがあるので、そのリストを停止フェードで止める
+    func stop(markID: UUID) {
+        for seq in model.show.sequences where seq.steps.contains(where: { $0.id == markID }) {
+            if model.isRunning(seq.id) { model.stopSequence(seq.id) }
+            return
+        }
+        for st in model.status where st.tag == markID {
+            model.output.mixer.send(.stopToken(st.token, fadeFrames: -1))
+        }
+    }
+
+    /// 台本の印から鳴らす（⌘／control＋クリック）。キーはそのキーを押したのと同じ、リストの曲はその曲から始める
+    func play(markID: UUID) {
+        if let cue = model.show.keyCues.first(where: { $0.id == markID }) {
+            model.trigger(cue)
+            return
+        }
+        for seq in model.show.sequences {
+            if let i = seq.steps.firstIndex(where: { $0.id == markID }) {
+                model.startSequence(seq.id, from: i)
+                return
+            }
+        }
+    }
+
     var selectedCue: CueMark? {
         switch model.selection {
         case .key(let code):
