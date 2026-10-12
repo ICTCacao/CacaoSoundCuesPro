@@ -344,17 +344,20 @@ struct PlayingWaveStrip: View {
         var frames: Int
         var status: VoiceStatus
         var sampleRate: Double
+        /// 音の音量の設定（倍率）
+        var gain: Double
     }
 
     private var voices: [Voice] {
         var out: [Voice] = []
         for st in model.status.reversed() where !st.armed {
-            var label = "", name = "", color = Color.gray, soundID: UUID?
+            var label = "", name = "", color = Color.gray, soundID: UUID?, volumeDB = 0.0
             if let cue = model.show.keyCues.first(where: { $0.id == st.tag }) {
                 label = KeyboardLayout.label(cue.keyCode)
                 name = cue.name
                 color = AppModel.colors[cue.colorIndex % AppModel.colors.count]
                 soundID = cue.play.soundID
+                volumeDB = cue.play.volumeDB
             } else {
                 for seq in model.show.sequences {
                     if let i = seq.steps.firstIndex(where: { $0.id == st.tag }) {
@@ -362,13 +365,14 @@ struct PlayingWaveStrip: View {
                         name = seq.steps[i].name
                         color = Color(nsColor: .systemIndigo)
                         soundID = seq.steps[i].play.soundID
+                        volumeDB = seq.steps[i].play.volumeDB
                         break
                     }
                 }
             }
             guard let soundID, let b = model.buffers[soundID] else { continue }
             out.append(Voice(id: st.token, label: label, name: name, color: color, peaks: b.peaks, frames: b.frames,
-                             status: st, sampleRate: b.sampleRate))
+                             status: st, sampleRate: b.sampleRate, gain: pow(10, volumeDB / 20)))
             if out.count == 3 { break }
         }
         return out
@@ -423,11 +427,19 @@ struct PlayingWaveStrip: View {
                 }
                 // いまの位置
                 ctx.fill(Path(CGRect(x: xp - 0.75, y: 0, width: 1.5, height: size.height)), with: .color(.white))
+                // いまの音量（音の音量 × フェード × 音量ライン）。横一本の線で、上が大きい（+6 dB 〜 -40 dB）
+                let g = v.gain * Double(st.level) * Double(st.lineGain)
+                let db = g > 0 ? 20 * log10(g) : -40
+                let t = CGFloat((min(max(db, -40), 6) + 40) / 46)
+                let y = size.height - 1 - t * (size.height - 2)
+                ctx.fill(Path(CGRect(x: 0, y: y - 0.75, width: size.width, height: 1.5)), with: .color(.yellow.opacity(0.9)))
             }
             Text(st.loop ? "∞" : remaining.timeText)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(st.stopping ? .orange : .secondary)
-                .frame(width: 52, alignment: .trailing)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 52, alignment: .trailing)
         }
         .frame(maxHeight: .infinity)
     }
