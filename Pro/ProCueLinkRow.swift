@@ -8,6 +8,8 @@ struct ProCueLinkRow: View {
     private var pro: ProModel { ProModel.shared }
 
     var body: some View {
+        // 出力の系統（系統が 2 つ以上あるとき）
+        ProOutputRow(cueID: cueID)
         if let script = pro.script {
             VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {

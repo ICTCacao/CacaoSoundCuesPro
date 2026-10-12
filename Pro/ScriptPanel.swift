@@ -125,9 +125,10 @@ private struct FoldedScriptStrip: View {
     }
 }
 
-/// 上の帯に足すボタン（台本のパネルの表示）
+/// 上の帯に足すボタン（台本のパネルの表示、出力の系統）
 struct ProTopBarItems: View {
     private var pro: ProModel { ProModel.shared }
+    @State private var showOutputs = false
 
     var body: some View {
         @Bindable var pro = pro
@@ -136,6 +137,11 @@ struct ProTopBarItems: View {
         }
         .toggleStyle(.button)
         .help(L("台本（ScenarioWriterSolo）のパネルを出す・畳む"))
+        Button { showOutputs = true } label: {
+            Label(L("出力"), systemImage: "hifispeaker.2")
+        }
+        .help(L("出力の系統（機器と左右のチャンネル）を決める"))
+        .sheet(isPresented: $showOutputs) { OutputsSheet() }
     }
 }
 

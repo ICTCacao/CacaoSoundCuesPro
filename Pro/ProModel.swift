@@ -186,6 +186,8 @@ struct ProData: Codable, Equatable {
     var memos: [String: String] = [:]
     /// 帯に書いたメモ（きっかけに属さないもの）
     var notes: [ScriptNote] = []
+    /// キー・曲（id）→ 出力の系統の名前。無ければメイン
+    var outputs: [String: String] = [:]
     /// 縦書きで表示する
     var vertical = true
     var fontSize: Double = 16
@@ -209,6 +211,7 @@ struct ProData: Codable, Equatable {
         ends = (try? c.decode([String: CueAnchor].self, forKey: .ends)) ?? [:]
         memos = (try? c.decode([String: String].self, forKey: .memos)) ?? [:]
         notes = (try? c.decode([ScriptNote].self, forKey: .notes)) ?? []
+        outputs = (try? c.decode([String: String].self, forKey: .outputs)) ?? [:]
         vertical = (try? c.decode(Bool.self, forKey: .vertical)) ?? true
         fontSize = (try? c.decode(Double.self, forKey: .fontSize)) ?? 16
         lineSpacing = (try? c.decode(Double.self, forKey: .lineSpacing)) ?? 0.2
@@ -355,6 +358,22 @@ final class ProModel {
     func setFontSize(_ s: Double) { data.fontSize = s; model.markDirty() }
     func setLineSpacing(_ s: Double) { data.lineSpacing = s; model.markDirty() }
     func setCharSpacing(_ s: Double) { data.charSpacing = s; model.markDirty() }
+    /// キー・曲の出力の系統（名前。nil ならメイン）
+    func setOutput(_ cueID: UUID, _ name: String?) {
+        data.outputs[cueID.uuidString] = name
+        model.markDirty()
+    }
+
+    /// 出力の系統の名前を変えたとき、このキューシートの指定も付け替える
+    func renameOutput(_ old: String, to new: String) {
+        var changed = false
+        for (k, v) in data.outputs where v == old {
+            data.outputs[k] = new
+            changed = true
+        }
+        if changed { model.markDirty() }
+    }
+
     func setNameChars(_ n: Int?) { data.nameChars = n; model.markDirty() }
     func setBodyChars(_ n: Int?) { data.bodyChars = n; model.markDirty() }
 
