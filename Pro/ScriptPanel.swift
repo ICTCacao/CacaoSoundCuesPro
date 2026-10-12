@@ -6,28 +6,64 @@ import SwiftUI
 // 台本の文字には何も載せず（紙の台本と同じ見た目）、ページの下（横書きは右）の「きっかけの帯」に、
 // きっかけの位置から線を引き、押すキー・名前・メモを横書きで出す（音響台本の書き方）。次のページにきっかけがあれば下に出す
 
-/// 主画面の横に台本のパネルを並べる
+/// 主画面の横に台本のパネルを並べる。
+/// 開く・畳むで主画面の入れ物が変わらないよう、HSplitView は使わずに自分で並べる（畳んだら主画面が台本のぶんまで広がる）
 struct ProScriptSplit<Content: View>: View {
     @ViewBuilder var content: Content
     private var pro: ProModel { ProModel.shared }
+    /// 台本のパネルの幅（窓の幅に対する割合。この Mac に保存）
+    @AppStorage("pro.scriptFraction") private var fraction = 0.3
+    @State private var dragStart: Double?
+
+    private static var minScript: CGFloat { 280 }
+    /// 主画面に残す幅（キーボードが入る広さ）
+    private static var minContent: CGFloat { 780 }
 
     var body: some View {
-        if pro.showPanel {
-            HSplitView {
-                ScriptPanel()
-                    .frame(minWidth: 280, idealWidth: 380)
-                    .background(SplitPersistence(key: "pro.split.script"))
-                content
-                    .frame(minWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
-            }
-        } else {
-            // 畳んだときは左に細い帯を残し、押すと開く
+        GeometryReader { geo in
+            let width = scriptWidth(total: geo.size.width)
             HStack(spacing: 0) {
-                FoldedScriptStrip()
-                ThemeDivider()
+                if pro.showPanel {
+                    ScriptPanel()
+                        .frame(width: width)
+                    divider(total: geo.size.width)
+                } else {
+                    // 畳んだときは左に細い帯を残し、押すと開く
+                    FoldedScriptStrip()
+                    ThemeDivider()
+                }
                 content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+
+    private func scriptWidth(total: CGFloat) -> CGFloat {
+        let maxW = max(Self.minScript, total - Self.minContent)
+        return min(max(CGFloat(fraction) * total, Self.minScript), maxW)
+    }
+
+    /// ドラッグで幅を変える仕切り
+    private func divider(total: CGFloat) -> some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: 1)
+            .padding(.horizontal, 3)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                    .onChanged { v in
+                        guard total > 0 else { return }
+                        let start = dragStart ?? Double(scriptWidth(total: total))
+                        if dragStart == nil { dragStart = start }
+                        let w = min(max(start + v.translation.width, Self.minScript), max(Self.minScript, total - Self.minContent))
+                        fraction = Double(w / total)
+                    }
+                    .onEnded { _ in dragStart = nil }
+            )
     }
 }
 
