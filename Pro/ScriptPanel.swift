@@ -26,15 +26,18 @@ struct ProScriptSplit<Content: View>: View {
     /// 仕切りの太さ（つかむところ）
     private var handle: CGFloat { 7 }
 
-    /// 主画面の最小の幅（MainView の各パネルの minWidth と、キーボードがいちばん小さくなったときの幅）
+    /// 主画面の最小の幅（MainView の各パネルの minWidth と、キーボードがいちばん小さくなったときの幅）。
+    /// リストの欄は、リストがあるとき（か「リスト」ボタンで出したとき）だけ
     private var minContent: CGFloat {
         let divider: CGFloat = 1
+        let list = AppModel.shared.listVisible
         if showKeyboard {
             let columns: CGFloat = 13 + (showKeypad ? 4 : 0)
             let keyboard = 44 * min(keyboardScale, 1) * columns + 5 * (columns - 1) + (showKeypad ? 22 : 0) + 40
-            return max(keyboard, showInspector ? 400 + divider + 480 : 400)
+            let panels: CGFloat = showInspector ? (list ? 400 + divider + 480 : 480) : (list ? 400 : 0)
+            return max(keyboard, panels)
         }
-        return showInspector ? 260 + 380 + 460 + divider * 2 : 260 + 380 + divider
+        return 260 + (list ? divider + 380 : 0) + (showInspector ? divider + 460 : 0)
     }
 
     var body: some View {

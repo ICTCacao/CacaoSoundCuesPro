@@ -1,7 +1,7 @@
 # CacaoSoundCues Pro
 
 舞台のポン出しアプリ [CacaoSoundCues](https://github.com/ICTCacao/CacaoSoundCues) の Pro 版（Mac 用・無料・オープンソース）。
-無料版の機能に、**台本連動**（ScenarioWriterSolo の台本・PDF の台本を横に出し、きっかけを台本の位置に結びつける）、
+Simple 版の機能に、**台本連動**（ScenarioWriterSolo の台本・PDF の台本を横に出し、きっかけを台本の位置に結びつける）、
 **台本進行**（Enter で台本の順に鳴らす）、**出力の系統**（複数の出力）、**バックアップ機との同時運転**、**MIDI コントロール**を足したもの。
 
 - ダウンロード: [Releases](https://github.com/ICTCacao/CacaoSoundCuesPro/releases) の `CacaoSoundCuesPro-<版>.dmg` と、マニュアル（日本語・英語の PDF）
@@ -10,10 +10,10 @@
 
 ## 作り
 
-- となりに公開版を置いてビルドする（`~/CacaoApps/CacaoSoundCues` と `~/CacaoApps/CacaoSoundCuesPro`）。
-  公開版のソース（`../CacaoSoundCues/CacaoSoundCues`）と Core パッケージに、`Pro/` を足して 1 つのアプリにする
-- 公開版のソースの中の `#if PRO` が差し込み口（主画面の横の台本パネル、上の帯のボタン、インスペクタのきっかけ、← → キー、開く・保存）
-- アプリ名は CacaoSoundCuesPro.app（bundle id `com.ictcacao.CacaoSoundCuesPro`）。設定は無料版と別に保存される
+- となりに Simple 版を置いてビルドする（`~/CacaoApps/CacaoSoundCues` と `~/CacaoApps/CacaoSoundCuesPro`）。
+  Simple 版のソース（`../CacaoSoundCues/CacaoSoundCues`）と Core パッケージに、`Pro/` を足して 1 つのアプリにする
+- Simple 版のソースの中の `#if PRO` が差し込み口（主画面の横の台本パネル、上の帯のボタン、インスペクタのきっかけ、← → キー、開く・保存）
+- アプリ名は CacaoSoundCuesPro.app（bundle id `com.ictcacao.CacaoSoundCuesPro`）。設定は Simple 版と別に保存される
 
 ```sh
 git clone https://github.com/ICTCacao/CacaoSoundCues.git
@@ -25,19 +25,19 @@ rm -rf dist/CacaoSoundCuesPro.app && cp -R build/dd/Build/Products/Release/Cacao
 ./make-dmg.sh   # dist/CacaoSoundCuesPro-<版>.dmg（古い版の dmg は消す）
 ```
 
-版は `project.yml` と `Pro/Resources/Info.plist`、マニュアルの表紙と dmg の名前（`manual/*.md`）に書く。公開版と同じ番号にする（公開版の `./bump-version.sh` を上げたら、ここも同じ番号に）。
+版は `project.yml` と `Pro/Resources/Info.plist`、マニュアルの表紙と dmg の名前（`manual/*.md`）に書く。Simple 版と同じ番号にする（Simple 版の `./bump-version.sh` を上げたら、ここも同じ番号に）。
 
 ## マニュアル
 
-`manual/CacaoSoundCuesPro-マニュアル.md`（日本語）と `manual/CacaoSoundCuesPro-Manual-en.md`（英語）。Marp、公開版のマニュアルと
-同じ見た目。`manual/build.sh` で両方の PDF を作り `dist/` にも置く（要 `brew install marp-cli` と Google Chrome）。基本の操作は公開版のマニュアルにまかせ、Pro の機能だけを書く。
+`manual/CacaoSoundCuesPro-マニュアル.md`（日本語）と `manual/CacaoSoundCuesPro-Manual-en.md`（英語）。Marp、Simple 版のマニュアルと
+同じ見た目。`manual/build.sh` で両方の PDF を作り `dist/` にも置く（要 `brew install marp-cli` と Google Chrome）。基本の操作は Simple 版のマニュアルにまかせ、Pro の機能だけを書く。
 
 画面写真（`manual/img/`）は開発版（Debug）を起動引数で撮る。本物の公演データを写さないよう、作った音と
 ScenarioWriterSolo の `samples/sample.scwd` で作ったサンプル公演を使う。撮るときは出力の系統と同時運転を始めない
 （このMacの出力や役の設定に触らない）。英語版の画面写真（`img/en-*.png`）は、英語の名前のサンプル（音のファイル名も英語）を `-language en` で撮る
 （台本は日本語のサンプルのまま。台本パネルは日本語の台本を紙と同じ字数で折り返す作りのため）。
 
-Pro の機能の言葉の英訳は `Pro/Resources/Languages/en-pro.json`（公開版の `en.json` に重ねて読む）。言葉を足したら、ここにも訳を足す。
+Pro の機能の言葉の英訳は `Pro/Resources/Languages/en-pro.json`（Simple 版の `en.json` に重ねて読む）。言葉を足したら、ここにも訳を足す。
 
 ```sh
 <Debug の app>/Contents/MacOS/CacaoSoundCuesPro -debugOpen <サンプル.ccsc> -debugSelectKey 18 \
@@ -70,7 +70,7 @@ MIDI の画面写真（08・09）は、撮る間だけ CoreMIDI の仮想の機�
 - 帯に、きっかけに属さないメモも書ける（右クリック「ここにメモを書く…」。紙の台本の余白の鉛筆書きのように）
 - 台本のパネルは左に畳める。右へ広げると、主画面を隠して窓いっぱいにできる
 - キューシート（.ccsc）の中の `pro.json`（結びつき・止める位置・メモ・表示の設定）と `Script/`（台本のコピー）に保存。
-  無料版はこれらに触らないので、無料版で開いて保存しても消えない
+  Simple 版はこれらに触らないので、Simple 版で開いて保存しても消えない
 - 台本の行は ScenarioWriterSolo が付ける `uid` で指す（直しても位置がずれにくい）。uid の無い古い台本は場面と行の番号で代用
 
 ### 台本進行（台本の順に Enter で鳴らす）
@@ -89,7 +89,7 @@ MIDI の画面写真（08・09）は、撮る間だけ CoreMIDI の仮想の機�
 - ⌘＋クリック・control＋クリックで鳴らすと、Standby はその次のきっかけへ（そこから進める）
 - リストは曲（音源設定）の置き場所だけになる: 曲は 1 曲ずつ鳴らし（「Return を押してから n 秒」の待ちは効く）、続けて鳴らさない。
   リストの開始／停止キー・開始ボタンは効かない。入れたとき鳴っているリストの曲は最後まで鳴り、次の曲へは進まない。キーマップ（キーを押して鳴らす）はそのまま
-- 公開版の `#if PRO` の差し込み口: `advanceActiveSequence`（Enter）・`endCurrentSequenceSong`（Space）・`moveCue`（↑↓）・`cueStep`・
+- Simple 版の `#if PRO` の差し込み口: `advanceActiveSequence`（Enter）・`endCurrentSequenceSong`（Space）・`moveCue`（↑↓）・`cueStep`・
   `toggleSequence`・`startSequence` で台本進行に回す。同時運転の操作の入口の後で回すので、MIDI の割り当て（Return・スペース・↑↓）と
   バックアップ機にもそのまま乗る。入・切・Standby・印から鳴らすは `SyncOp` の `scriptRun` / `scriptStandby` / `scriptPlay`
 
@@ -110,7 +110,7 @@ MIDI の画面写真（08・09）は、撮る間だけ CoreMIDI の仮想の機�
 - 別々の機器を選ぶと、それらをまとめた機器セット（アグリゲートデバイス。このアプリの中だけ、アプリを終えると消える）を作り、
   1 台の多チャンネルの機器として鳴らす。時計はメインの機器に合わせ、ほかはずれを macOS が補正する。サンプルレートはメインにそろえる
 - 系統の設定（機器）はこの Mac に保存（`pro.outputs`）。決めた機器で始められなければ、システムの出力に戻して知らせる
-- メインだけでシステムの出力の 1-2 なら、無料版と同じ出し方
+- メインだけでシステムの出力の 1-2 なら、Simple 版と同じ出し方
 
 ### バックアップ機との同時運転
 

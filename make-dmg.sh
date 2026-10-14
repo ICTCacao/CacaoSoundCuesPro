@@ -1,6 +1,6 @@
 #!/bin/zsh
 # dist/CacaoSoundCuesPro.app から、背景に矢印付きのドラッグ＆ドロップ式 dmg を dist/CacaoSoundCuesPro-<version>.dmg に作る。
-# （公開版 ../CacaoSoundCues の make-dmg.sh と同じ作り。背景は公開版の dmg/make-background.swift で生成）
+# （Simple 版 ../CacaoSoundCues の make-dmg.sh と同じ作り。背景は Simple 版の dmg/make-background.swift で生成）
 set -euo pipefail
 cd "$(dirname "$0")"
 

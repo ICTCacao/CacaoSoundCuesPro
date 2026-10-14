@@ -69,7 +69,7 @@
 
         ],
         "soundID" : "8B334537-66C5-4E17-A2F9-851B91D2AAD4",
-        "volumeDB" : -13.8,
+        "volumeDB" : -19.8,
         "volumePoints" : [
 
         ]
@@ -139,6 +139,31 @@
         ],
         "soundID" : "C10866CE-034B-4A5E-809C-D3B4777B19D7",
         "volumeDB" : -19.7,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 4,
+      "id" : "B7A39236-4D02-4001-BAA4-5B82BBF92540",
+      "keyCode" : 16,
+      "name" : "bell2",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 4.1,
+        "fadeOut" : 2,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "C10866CE-034B-4A5E-809C-D3B4777B19D7",
+        "volumeDB" : -10.3,
         "volumePoints" : [
 
         ]

@@ -1,7 +1,7 @@
 # サンプルのキューシート「夕暮れの谷」
 
 CacaoSoundCues Pro の台本連動・台本進行を試すためのサンプルです。`夕暮れの谷.ccsc` を CacaoSoundCues Pro で開いてください
-（無料版の CacaoSoundCues でも、キーとリストは開けます）。
+（Simple 版の CacaoSoundCues でも、キーとリストは開けます）。
 
 - 台本：ScenarioWriterSolo のサンプル台本（`Script/sample.scwd`）
 - 音：`Audio/` の音はすべて作者（ICTCacao）の自作です

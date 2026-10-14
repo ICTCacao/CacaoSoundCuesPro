@@ -1,6 +1,6 @@
 name: CacaoSoundCuesPro
-# CacaoSoundCues Pro（オープンソース・MIT）。となりの公開版 ../CacaoSoundCues のソースに、Pro の機能（Pro/）を足してビルドする。
-# 公開版のソースの中の `#if PRO` が、Pro の機能への差し込み口
+# CacaoSoundCues Pro（オープンソース・MIT）。となりの Simple 版 ../CacaoSoundCues のソースに、Pro の機能（Pro/）を足してビルドする。
+# Simple 版のソースの中の `#if PRO` が、Pro の機能への差し込み口
 options:
   bundleIdPrefix: com.ictcacao
   deploymentTarget:

@@ -55,7 +55,7 @@ Version 5.1.1 / October 2026
 
 ## What this manual covers
 
-1. What Pro adds (differences from the free version)
+1. What Pro adds (differences from the Simple version)
 2. Importing and displaying a script
 3. Linking cues to the script (the cue band)
 4. Following the script, playing from the band, and **Script Run** (play cues in script order with Enter)
@@ -64,7 +64,7 @@ Version 5.1.1 / October 2026
 7. MIDI control (controllers and lighting consoles)
 8. What is saved, and troubleshooting
 
-> For the basics (assigning sounds, fades, lists, Show Mode), see the free **CacaoSoundCues Manual**. Pro works the same way.
+> For the basics (assigning sounds, fades, lists, Show Mode), see the **CacaoSoundCues Manual** (Simple version). Pro works the same way.
 
 ---
 
@@ -96,9 +96,9 @@ Version 5.1.1 / October 2026
 
 - Operate from MIDI controllers, foot pedals or a lighting console (MSC), and send MIDI to the console when sounds start
 
-### Compatibility with the free version
+### Compatibility with the Simple version
 
-- Cue sheets (.ccsc) are the same format. A cue sheet made in Pro opens safely in the free version (script links and other Pro data are simply ignored)
+- Cue sheets (.ccsc) are the same format. A cue sheet made in Pro opens safely in the Simple version (script links and other Pro data are simply ignored)
 
 </div>
 </div>
@@ -114,7 +114,7 @@ Version 5.1.1 / October 2026
 2. Drag **CacaoSoundCuesPro** onto **Applications**
 3. Double-click CacaoSoundCuesPro in the Applications folder to launch
 
-<span class="small">It can sit next to the free version (CacaoSoundCues). Settings are kept separately.</span>
+<span class="small">It can sit next to the Simple version (CacaoSoundCues). Settings are kept separately.</span>
 
 </div>
 <div>
@@ -152,6 +152,7 @@ This is used to connect to the backup Mac on the same network. Click **Allow**.<
 | **MIDI** | MIDI control (input device, output device, assignments) → section 11 |
 | **Backup** | Running with a backup Mac → section 10. Dot color: gray = off, green = connected, orange = cue sheets differ, red = disconnected |
 | **Keyboard** | Show or hide the keyboard (hidden: a list of assigned keys) |
+| **List** | Show or hide the list area (hidden when there are no lists; click to get “Create List”) |
 | **Inspector** | Show or hide the settings on the right. Hiding it gives the script more room |
 
 <span class="small">When the window is narrow (or the labels are long, as in English), the buttons show icons only. Hover to see the name.</span>
@@ -461,7 +462,7 @@ Pro data is stored inside the cue sheet (.ccsc).
 </div>
 <div>
 
-- The free version leaves these alone, so **opening and saving in the free version does not remove them**
+- The Simple version leaves these alone, so **opening and saving in the Simple version does not remove them**
 - Take the cue sheet to another Mac and the script goes with it
 
 <span class="small">Output device settings, the backup role, and the MIDI input and output devices are saved per Mac (not in the cue sheet).</span>
@@ -499,7 +500,7 @@ Pro data is stored inside the cue sheet (.ccsc).
 - If a chosen device cannot be used (not connected, unavailable), sounds play on the **system output** and the Outputs window tells you
 - Outputs are reapplied automatically when devices are plugged in or out
 - Changing outputs stops what is playing. Set them up **before the show**
-- With only Main on “system output, 1-2”, playback is the same as the free version
+- With only Main on “system output, 1-2”, playback is the same as the Simple version
 
 ---
 
@@ -690,4 +691,4 @@ Select a key or track and, under **Send MIDI** in the inspector, choose a note, 
 | MIDI signals do nothing | Does “Received” in the MIDI window show them? If not, check the input device and cables; if so, check the assignment (for MSC, the device ID) |
 | The lighting console gets no MIDI | Is an output device chosen? Check with Test send |
 
-<span class="small">For the basics (keys, lists, Show Mode, settings), see the free CacaoSoundCues Manual.</span>
+<span class="small">For the basics (keys, lists, Show Mode, settings), see the CacaoSoundCues Manual (Simple version).</span>

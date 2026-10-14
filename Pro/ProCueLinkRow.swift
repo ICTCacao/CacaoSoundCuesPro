@@ -37,26 +37,11 @@ struct ProCueLinkRow: View {
                             .fixedSize()
                     }
                 }
-                // 2 段目: ボタン（横に詰めると名前が省かれて読めないため、段を分ける）
-                HStack(spacing: 8) {
-                    let others = pro.linkIDs(of: cueID).count - 1
-                    if pro.summary(anchor) != nil {
-                        Button { reveal(anchor) } label: { Label(L("台本で見る"), systemImage: "eye") }
-                    }
-                    Spacer(minLength: 4)
-                    if !model.showMode {
-                        if let sel = pro.selected, sel != anchor {
-                            Button { pro.addLink(cueID, at: sel) } label: { Label(L("選んだ位置にも足す"), systemImage: "plus.circle") }
-                                .help(L("同じ音を、台本の別の場所でも鳴らす"))
-                            if others == 0 {
-                                Button { pro.link(cueID, to: sel) } label: { Label(L("選んだ位置へ移す"), systemImage: "arrow.right.circle") }
-                            }
-                        }
-                        Button { pro.unlink(cueID) } label: { Label(L("外す"), systemImage: "xmark") }
-                            .help(others > 0 ? L("1 か所目を外す（2 か所目が 1 か所目になる）") : L("台本との結びつきを外す"))
-                    }
+                // 2 段目: ボタン（横に詰めると名前が省かれて読めないため、段を分ける。それでも狭ければ絵だけにする）
+                ViewThatFits(in: .horizontal) {
+                    linkButtons(anchor, compact: false)
+                    linkButtons(anchor, compact: true)
                 }
-                .fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 8) {
                     Label(L("きっかけ"), systemImage: "text.book.closed")
@@ -91,6 +76,32 @@ struct ProCueLinkRow: View {
             .padding(8)
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.08)))
         }
+    }
+
+    /// 2 段目のボタン。compact なら絵だけ（名前はマウスを載せると出る）
+    private func linkButtons(_ anchor: CueAnchor, compact: Bool) -> some View {
+        let others = pro.linkIDs(of: cueID).count - 1
+        return HStack(spacing: 8) {
+            if pro.summary(anchor) != nil {
+                Button { reveal(anchor) } label: { Label(L("台本で見る"), systemImage: "eye") }
+                    .help(L("台本で見る"))
+            }
+            Spacer(minLength: 4)
+            if !model.showMode {
+                if let sel = pro.selected, sel != anchor {
+                    Button { pro.addLink(cueID, at: sel) } label: { Label(L("選んだ位置にも足す"), systemImage: "plus.circle") }
+                        .help(L("同じ音を、台本の別の場所でも鳴らす"))
+                    if others == 0 {
+                        Button { pro.link(cueID, to: sel) } label: { Label(L("選んだ位置へ移す"), systemImage: "arrow.right.circle") }
+                            .help(L("選んだ位置へ移す"))
+                    }
+                }
+                Button { pro.unlink(cueID) } label: { Label(L("外す"), systemImage: "xmark") }
+                    .help(others > 0 ? L("1 か所目を外す（2 か所目が 1 か所目になる）") : L("台本との結びつきを外す"))
+            }
+        }
+        .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
+        .fixedSize(horizontal: compact, vertical: false)
     }
 
     private func reveal(_ anchor: CueAnchor) {

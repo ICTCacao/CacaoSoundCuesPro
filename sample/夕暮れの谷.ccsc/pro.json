@@ -1,62 +1,95 @@
 {
-  "autoFollow": false,
-  "charSpacing": 0,
-  "ends": {
-    "1835CC78-5805-4EC7-A5DC-E211F7BE6104": {
-      "line": "pos-0-10",
-      "nudge": 0.29,
-      "offset": 31
+  "autoFollow" : false,
+  "charSpacing" : 0,
+  "ends" : {
+    "1835CC78-5805-4EC7-A5DC-E211F7BE6104" : {
+      "line" : "pos-0-10",
+      "nudge" : 0.29,
+      "offset" : 31
     },
-    "24EE9FE3-FD61-49F9-8399-B1125891977B": {
-      "line": "pos-1-11",
-      "nudge": 2.17,
-      "offset": 0
+    "24EE9FE3-FD61-49F9-8399-B1125891977B" : {
+      "line" : "pos-1-11",
+      "nudge" : 2.17,
+      "offset" : 0
     },
-    "9F279913-83B1-464C-B34B-93377B546AA6": {
-      "line": "pos-1-1",
-      "nudge": 3.29,
-      "offset": 0
+    "76A0B9F7-DD5E-4AF0-B2F5-461DEF40256D" : {
+      "line" : "pos-0-6",
+      "nudge" : -1.15,
+      "offset" : 0
     },
-    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8": {
-      "line": "pos-0-14",
-      "nudge": 0.7,
-      "offset": 0
+    "9F279913-83B1-464C-B34B-93377B546AA6" : {
+      "line" : "pos-1-1",
+      "nudge" : 0.75,
+      "offset" : 0
+    },
+    "B7A39236-4D02-4001-BAA4-5B82BBF92540" : {
+      "line" : "pos-2-2",
+      "nudge" : 0.16,
+      "offset" : 0
+    },
+    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8" : {
+      "line" : "pos-0-14",
+      "nudge" : 0.7,
+      "offset" : 0
     }
   },
-  "fontSize": 16,
-  "lineSpacing": 0.2,
-  "links": {
-    "1835CC78-5805-4EC7-A5DC-E211F7BE6104": {
-      "line": "pos-0-1",
-      "nudge": 0.8,
-      "offset": 0
+  "extraLinks" : {
+
+  },
+  "fontSize" : 16,
+  "lineSpacing" : 0.2,
+  "links" : {
+    "1835CC78-5805-4EC7-A5DC-E211F7BE6104" : {
+      "line" : "pos-0-1",
+      "nudge" : 0.8,
+      "offset" : 0
     },
-    "24EE9FE3-FD61-49F9-8399-B1125891977B": {
-      "line": "pos-1-10",
-      "nudge": 0.29,
-      "offset": 0
+    "24EE9FE3-FD61-49F9-8399-B1125891977B" : {
+      "line" : "pos-1-10",
+      "nudge" : -1.48,
+      "offset" : 0
     },
-    "9F279913-83B1-464C-B34B-93377B546AA6": {
-      "line": "pos-1-0",
-      "nudge": 0.74,
-      "offset": 0
+    "76A0B9F7-DD5E-4AF0-B2F5-461DEF40256D" : {
+      "line" : "pos-0-6",
+      "nudge" : -2.12,
+      "offset" : 0
     },
-    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8": {
-      "line": "pos-0-14",
-      "nudge": 0.23,
-      "offset": 0
+    "9F279913-83B1-464C-B34B-93377B546AA6" : {
+      "line" : "pos-1-0",
+      "nudge" : -1.13,
+      "offset" : 0
+    },
+    "B7A39236-4D02-4001-BAA4-5B82BBF92540" : {
+      "line" : "pos-2-1",
+      "nudge" : 0.71,
+      "offset" : 0
+    },
+    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8" : {
+      "line" : "pos-0-14",
+      "nudge" : 0.23,
+      "offset" : 0
     }
   },
-  "memos": {},
-  "midi": {
-    "bindings": [],
-    "mscReceiveID": 127,
-    "mscSendID": 127,
-    "sends": {}
+  "memos" : {
+
   },
-  "notes": [],
-  "outputs": {},
-  "script": "sample.scwd",
-  "version": 1,
-  "vertical": true
+  "midi" : {
+    "bindings" : [
+
+    ],
+    "mscReceiveID" : 127,
+    "mscSendID" : 127,
+    "sends" : {
+
+    }
+  },
+  "notes" : [
+
+  ],
+  "outputs" : {
+
+  },
+  "script" : "sample.scwd",
+  "version" : 1,
+  "vertical" : true
 }
