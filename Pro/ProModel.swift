@@ -196,11 +196,14 @@ struct ProData: Codable, Equatable {
     var script: String?
     /// 取り込んだときの元の台本の場所（「台本を読み込み直す」用）
     var scriptSource: String?
-    /// キー（KeyCue.id）・リストの曲（SequenceStep.id）→ きっかけの位置（台本の行と文字の位置）
+    /// きっかけ → 位置（台本の行と文字の位置）。きっかけの ID は、1 か所目はキー（KeyCue.id）・リストの曲（SequenceStep.id）の ID そのもの、
+    /// 同じ音を別の場所でも使うときの 2 か所目からは新しい ID（extraLinks で音の ID をたどる）
     var links: [String: CueAnchor] = [:]
-    /// 止める位置（終わり）。BGM などは、ここまで線を伸ばし「F.O.」と書く
+    /// 2 か所目からのきっかけの ID → キー・曲の ID
+    var extraLinks: [String: String] = [:]
+    /// きっかけ → 止める位置（終わり）。BGM などは、ここまで線を伸ばし「F.O.」と書く
     var ends: [String: CueAnchor] = [:]
-    /// きっかけのメモ（帯のラベルの下に出す。例「Piano」）
+    /// きっかけ → メモ（帯のラベルの下に出す。例「Piano」）
     var memos: [String: String] = [:]
     /// 帯に書いたメモ（きっかけに属さないもの）
     var notes: [ScriptNote] = []
@@ -228,6 +231,7 @@ struct ProData: Codable, Equatable {
         script = try? c.decode(String.self, forKey: .script)
         scriptSource = try? c.decode(String.self, forKey: .scriptSource)
         links = (try? c.decode([String: CueAnchor].self, forKey: .links)) ?? [:]
+        extraLinks = (try? c.decode([String: String].self, forKey: .extraLinks)) ?? [:]
         ends = (try? c.decode([String: CueAnchor].self, forKey: .ends)) ?? [:]
         memos = (try? c.decode([String: String].self, forKey: .memos)) ?? [:]
         notes = (try? c.decode([ScriptNote].self, forKey: .notes)) ?? []
@@ -355,9 +359,11 @@ final class ProModel {
         // 使われなくなったキー・曲の結びつきは捨てる
         var pro = data
         let ids = Set(model.show.keyCues.map(\.id.uuidString) + model.show.sequences.flatMap { $0.steps.map(\.id.uuidString) })
-        pro.links = pro.links.filter { ids.contains($0.key) }
-        pro.ends = pro.ends.filter { ids.contains($0.key) && pro.links[$0.key] != nil }
-        pro.memos = pro.memos.filter { ids.contains($0.key) && !$0.value.isEmpty }
+        // きっかけ（2 か所目からは、たどった先のキー・曲）が残っているものだけ
+        pro.links = pro.links.filter { ids.contains(pro.extraLinks[$0.key] ?? $0.key) }
+        pro.extraLinks = pro.extraLinks.filter { pro.links[$0.key] != nil }
+        pro.ends = pro.ends.filter { pro.links[$0.key] != nil }
+        pro.memos = pro.memos.filter { pro.links[$0.key] != nil && !$0.value.isEmpty }
         pro.midi.sends = pro.midi.sends.filter { ids.contains($0.key) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -460,6 +466,14 @@ final class ProModel {
         model.markDirty()
     }
 
+    /// キーをコピーしたとき（option＋ドラッグ）: 出力の系統も同じにする。台本のきっかけと MIDI を送る設定はコピーしない
+    func copiedCue(from: UUID, to: UUID) {
+        if let o = data.outputs[from.uuidString] {
+            data.outputs[to.uuidString] = o
+            model.markDirty()
+        }
+    }
+
     /// 出力の系統の名前を変えたとき、このキューシートの指定も付け替える
     func renameOutput(_ old: String, to new: String) {
         var changed = false
@@ -491,30 +505,82 @@ final class ProModel {
 
     // MARK: - 結びつき
 
-    func anchor(for cueID: UUID) -> CueAnchor? { data.links[cueID.uuidString] }
+    // きっかけ（linkID）は帯の 1 本の線。1 か所目の linkID はキー・曲の ID と同じなので、キー・曲の ID を渡せば 1 か所目を指す
 
+    /// きっかけの位置（キー・曲の ID なら 1 か所目）
+    func anchor(for linkID: UUID) -> CueAnchor? { data.links[linkID.uuidString] }
+
+    /// きっかけ → 鳴らすキー・曲の ID
+    func cueID(ofLink linkID: UUID) -> UUID {
+        data.extraLinks[linkID.uuidString].flatMap(UUID.init(uuidString:)) ?? linkID
+    }
+
+    /// そのキー・曲のきっかけ全部（1 か所目が先頭）
+    func linkIDs(of cueID: UUID) -> [UUID] {
+        var out: [UUID] = data.links[cueID.uuidString] != nil ? [cueID] : []
+        let extra = data.extraLinks.filter { $0.value == cueID.uuidString }.keys.compactMap(UUID.init(uuidString:))
+        out += extra.sorted { (scriptPosition(data.links[$0.uuidString]!) ?? 0) < (scriptPosition(data.links[$1.uuidString]!) ?? 0) }
+        return out
+    }
+
+    /// 1 か所目のきっかけを、ここにする（無ければ結びつける。あれば移す）
     func link(_ cueID: UUID, to anchor: CueAnchor) {
         data.links[cueID.uuidString] = anchor
         model.markDirty()
     }
 
-    func unlink(_ cueID: UUID) {
-        data.links[cueID.uuidString] = nil
-        data.ends[cueID.uuidString] = nil
+    /// 同じキー・曲のきっかけを、ここにも足す（同じ音を別の場所でも鳴らす）
+    func addLink(_ cueID: UUID, at anchor: CueAnchor) {
+        guard data.links[cueID.uuidString] != nil else { return link(cueID, to: anchor) }
+        let id = UUID().uuidString
+        data.links[id] = anchor
+        data.extraLinks[id] = cueID.uuidString
         model.markDirty()
     }
 
-    func end(for cueID: UUID) -> CueAnchor? { data.ends[cueID.uuidString] }
+    /// きっかけを外す。1 か所目を外して 2 か所目があれば、2 か所目を 1 か所目にする
+    func unlink(_ linkID: UUID) {
+        let key = linkID.uuidString
+        data.links[key] = nil
+        data.ends[key] = nil
+        data.memos[key] = nil
+        if data.extraLinks[key] != nil {
+            data.extraLinks[key] = nil
+        } else if let next = linkIDs(of: linkID).first {
+            // 2 か所目の位置・止める位置・メモを 1 か所目へ移す
+            let n = next.uuidString
+            data.links[key] = data.links[n]
+            data.ends[key] = data.ends[n]
+            data.memos[key] = data.memos[n]
+            data.links[n] = nil
+            data.ends[n] = nil
+            data.memos[n] = nil
+            data.extraLinks[n] = nil
+            if scriptStandby == next { scriptStandby = linkID }
+        }
+        if let s = scriptStandby, data.links[s.uuidString] == nil { scriptStandby = nil }
+        model.markDirty()
+    }
+
+    /// そのキー・曲のきっかけのうち、その位置より前でいちばん近いもの（止める位置を決めるとき）。無ければ 1 か所目
+    func nearestLink(of cueID: UUID, before a: CueAnchor) -> UUID? {
+        let ids = linkIDs(of: cueID)
+        guard let p = scriptPosition(a) else { return ids.first }
+        let before = ids.filter { (anchor(for: $0).flatMap(scriptPosition) ?? .infinity) <= p }
+        return before.last ?? ids.first
+    }
+
+    func end(for linkID: UUID) -> CueAnchor? { data.ends[linkID.uuidString] }
 
     /// 止める位置を決める（始まりより前なら入れ替える）
-    func setEnd(_ cueID: UUID, at anchor: CueAnchor?) {
-        data.ends[cueID.uuidString] = anchor
+    func setEnd(_ linkID: UUID, at anchor: CueAnchor?) {
+        data.ends[linkID.uuidString] = anchor
         model.markDirty()
     }
 
     /// 線の始まり（isEnd なら終わり）の位置を、文字からずらす（nil で文字の位置に戻す）
-    func setNudge(_ cueID: UUID, isEnd: Bool, _ value: Double?) {
-        let key = cueID.uuidString
+    func setNudge(_ linkID: UUID, isEnd: Bool, _ value: Double?) {
+        let key = linkID.uuidString
         let v = value.map { ($0 * 100).rounded() / 100 }
         if isEnd {
             guard data.ends[key] != nil else { return }
@@ -526,10 +592,10 @@ final class ProModel {
         model.markDirty()
     }
 
-    func memo(for cueID: UUID) -> String { data.memos[cueID.uuidString] ?? "" }
+    func memo(for linkID: UUID) -> String { data.memos[linkID.uuidString] ?? "" }
 
-    func setMemo(_ cueID: UUID, _ text: String) {
-        data.memos[cueID.uuidString] = text.isEmpty ? nil : text
+    func setMemo(_ linkID: UUID, _ text: String) {
+        data.memos[linkID.uuidString] = text.isEmpty ? nil : text
         model.markDirty()
     }
 
@@ -566,17 +632,27 @@ final class ProModel {
     /// 結びついたキュー全部（帯に描く）
     func allMarks() -> [CueMark] {
         var out: [CueMark] = []
+        // 2 か所目からのきっかけ（キー・曲の ID → きっかけの ID）
+        var extra: [String: [UUID]] = [:]
+        for (link, cue) in data.extraLinks {
+            if let id = UUID(uuidString: link) { extra[cue, default: []].append(id) }
+        }
+        func links(_ cueID: UUID) -> [UUID] {
+            (data.links[cueID.uuidString] != nil ? [cueID] : []) + (extra[cueID.uuidString] ?? []).sorted { $0.uuidString < $1.uuidString }
+        }
         for cue in model.show.keyCues {
-            if let a = anchor(for: cue.id) {
-                out.append(CueMark(id: cue.id, kind: .key(cue.keyCode, cue.colorIndex), name: cue.name, offset: a.offset,
-                                   start: a, end: end(for: cue.id), memo: memo(for: cue.id), fades: cue.play.fadeOut > 0))
+            for l in links(cue.id) {
+                guard let a = anchor(for: l) else { continue }
+                out.append(CueMark(id: l, cue: cue.id, kind: .key(cue.keyCode, cue.colorIndex), name: cue.name, offset: a.offset,
+                                   start: a, end: end(for: l), memo: memo(for: l), fades: cue.play.fadeOut > 0))
             }
         }
         for seq in model.show.sequences {
             for (i, step) in seq.steps.enumerated() {
-                if let a = anchor(for: step.id) {
-                    out.append(CueMark(id: step.id, kind: .step(i + 1), name: step.name, offset: a.offset,
-                                       start: a, end: end(for: step.id), memo: memo(for: step.id), fades: step.play.fadeOut > 0))
+                for l in links(step.id) {
+                    guard let a = anchor(for: l) else { continue }
+                    out.append(CueMark(id: l, cue: step.id, kind: .step(i + 1), name: step.name, offset: a.offset,
+                                       start: a, end: end(for: l), memo: memo(for: l), fades: step.play.fadeOut > 0))
                 }
             }
         }
@@ -591,7 +667,17 @@ final class ProModel {
     /// いま選んでいるキュー（キーかリストの曲）。台本の行を右クリックして結びつける相手
     /// その印の音が鳴っているか
     func isPlaying(markID: UUID) -> Bool {
-        model.status.contains { $0.tag == markID && !$0.armed }
+        let cue = cueID(ofLink: markID)
+        return model.status.contains { $0.tag == cue && !$0.armed }
+    }
+
+    /// 最後にそのキー・曲を鳴らしたきっかけ（同じ音を何か所かで使うとき、どの線に「Playing」を出すか）
+    private(set) var lastPlayedLink: [UUID: UUID] = [:]
+
+    /// 鳴っているキー・曲の「Playing」を出すきっかけ。台本から鳴らしたらそのきっかけ、キーで鳴らしたら 1 か所目
+    func playingLink(for cueID: UUID) -> UUID {
+        if let l = lastPlayedLink[cueID], data.links[l.uuidString] != nil { return l }
+        return cueID
     }
 
     /// その印の音だけを止める（Esc の全停止ではなく、その音のフェードアウト設定で）。
@@ -600,11 +686,12 @@ final class ProModel {
     func stop(markID: UUID) {
         guard ProSync.shared.begin(.stopMark(markID)) else { return }
         defer { ProSync.shared.end() }
-        for seq in model.show.sequences where model.isRunning(seq.id) && seq.steps.contains(where: { $0.id == markID }) {
+        let cue = cueID(ofLink: markID)
+        for seq in model.show.sequences where model.isRunning(seq.id) && seq.steps.contains(where: { $0.id == cue }) {
             model.stopSequence(seq.id)
             return
         }
-        for st in model.status where st.tag == markID {
+        for st in model.status where st.tag == cue {
             model.output.mixer.send(.stopToken(st.token, fadeFrames: -1))
         }
     }
@@ -620,12 +707,14 @@ final class ProModel {
             scriptStandby = mark(after: markID)
             return
         }
-        if let cue = model.show.keyCues.first(where: { $0.id == markID }) {
+        let cueID = cueID(ofLink: markID)
+        lastPlayedLink[cueID] = markID
+        if let cue = model.show.keyCues.first(where: { $0.id == cueID }) {
             model.trigger(cue)
             return
         }
         for seq in model.show.sequences {
-            if let i = seq.steps.firstIndex(where: { $0.id == markID }) {
+            if let i = seq.steps.firstIndex(where: { $0.id == cueID }) {
                 model.startSequence(seq.id, from: i)
                 return
             }
@@ -720,7 +809,7 @@ final class ProModel {
         let playing = model.status.filter { !$0.armed && !$0.stopping && $0.owner != AppModel.previewOwner }
         var best: (voice: VoiceStatus, end: Double)?
         for v in playing {
-            guard let a = data.ends[v.tag.uuidString], let e = scriptPosition(a) else { continue }
+            guard let a = data.ends[playingLink(for: v.tag).uuidString], let e = scriptPosition(a) else { continue }
             // 同じ位置で終わるものは、後に鳴らし始めた方から
             if best == nil || e < best!.end || (e == best!.end && v.token > best!.voice.token) { best = (v, e) }
         }
@@ -730,7 +819,8 @@ final class ProModel {
     /// 次に Space で止まるきっかけ（下の帯に出す）
     var scriptStopMark: CueMark? {
         guard let t = scriptStopTarget else { return nil }
-        return allMarks().first { $0.id == t.tag }
+        let link = playingLink(for: t.tag)
+        return allMarks().first { $0.id == link }
     }
 
     /// ↑↓: Standby を台本の前・次のきっかけへ
@@ -749,15 +839,20 @@ final class ProModel {
 
     /// リストの曲のダブルクリック（「次に鳴らす曲にする」）: 台本に結びついていれば、その曲を Standby に
     func cueFromList(_ stepID: UUID) {
-        if let a = anchor(for: stepID), contains(a) {
-            setStandby(stepID)
+        // その曲のきっかけが何か所かあれば、いまの Standby より後の最初のもの（無ければ最初のもの）
+        let ordered = orderedMarks().filter { $0.cue == stepID }
+        let now = scriptStandbyMark.flatMap { scriptPosition($0.start) } ?? -.infinity
+        if let m = ordered.first(where: { (scriptPosition($0.start) ?? 0) >= now }) ?? ordered.first {
+            setStandby(m.id)
         } else {
             model.message = L("この曲は台本に結びついていないので、台本進行の Standby にできません。")
         }
     }
 
     /// きっかけを 1 つだけ鳴らす。キーはそのキーを押したのと同じ、リストの曲はその曲だけ（リストとしては進めない）
-    private func playAlone(_ id: UUID) {
+    private func playAlone(_ linkID: UUID) {
+        let id = cueID(ofLink: linkID)
+        lastPlayedLink[id] = linkID
         if let cue = model.show.keyCues.first(where: { $0.id == id }) {
             model.trigger(cue)
         } else {
@@ -778,9 +873,9 @@ final class ProModel {
         case .key(let code, _):
             model.selection = .key(code)
         case .step:
-            for seq in model.show.sequences where seq.steps.contains(where: { $0.id == m.id }) {
+            for seq in model.show.sequences where seq.steps.contains(where: { $0.id == m.cue }) {
                 model.selectedSequenceID = seq.id
-                model.selection = .step(sequence: seq.id, step: m.id)
+                model.selection = .step(sequence: seq.id, step: m.cue)
             }
         }
     }
@@ -829,12 +924,12 @@ final class ProModel {
         switch model.selection {
         case .key(let code):
             guard let cue = model.show.keyCues.first(where: { $0.keyCode == code }) else { return nil }
-            return CueMark(id: cue.id, kind: .key(cue.keyCode, cue.colorIndex), name: cue.name, offset: 0,
+            return CueMark(id: cue.id, cue: cue.id, kind: .key(cue.keyCode, cue.colorIndex), name: cue.name, offset: 0,
                            start: CueAnchor(line: ""), end: nil, memo: "", fades: cue.play.fadeOut > 0)
         case let .step(seqID, stepID):
             guard let seq = model.show.sequences.first(where: { $0.id == seqID }),
                   let i = seq.steps.firstIndex(where: { $0.id == stepID }) else { return nil }
-            return CueMark(id: stepID, kind: .step(i + 1), name: seq.steps[i].name, offset: 0,
+            return CueMark(id: stepID, cue: stepID, kind: .step(i + 1), name: seq.steps[i].name, offset: 0,
                            start: CueAnchor(line: ""), end: nil, memo: "", fades: seq.steps[i].play.fadeOut > 0)
         case .none:
             return nil
@@ -850,9 +945,9 @@ final class ProModel {
            let i = model.upcomingIndex(seqID), seq.steps.indices.contains(i) {
             ids.insert(seq.steps[i].id)
         }
+        // 鳴っている音は、鳴らしたきっかけの線を明るく
         for v in model.status where !v.armed {
-            ids.insert(v.owner)
-            ids.insert(v.tag)
+            ids.insert(playingLink(for: v.tag))
         }
         return ids
     }
@@ -878,7 +973,10 @@ struct CueMark: Equatable, Identifiable {
         case key(UInt16, Int)
         case step(Int)
     }
+    /// きっかけ（帯の 1 本の線）の ID。1 か所目はキー・曲の ID と同じ
     var id: UUID
+    /// 鳴らすキー（KeyCue.id）・リストの曲（SequenceStep.id）
+    var cue: UUID
     var kind: Kind
     var name: String
     /// 行の本文の中の位置（何文字目の前か）

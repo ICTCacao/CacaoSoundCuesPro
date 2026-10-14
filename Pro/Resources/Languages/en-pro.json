@@ -204,6 +204,13 @@
         "台本進行の Standby にする": "Put on Script Run Standby",
         "台本進行: 台本の最初のきっかけを Standby にし、Enter（Return）で鳴らす・Space で止める。リストは続けて鳴らさず、曲の音源設定だけ使う": "Script Run: put the first cue in the script on Standby, play with Enter (Return), stop with Space. Lists don't play continuously; only their songs' sound settings are used",
         "進行解除": "End Run",
-        "台本進行をやめて、台本から Standby を消す（リストを続けて鳴らせるように戻る）": "End Script Run and remove Standby from the script (lists can play continuously again)"
+        "台本進行をやめて、台本から Standby を消す（リストを続けて鳴らせるように戻る）": "End Script Run and remove Standby from the script (lists can play continuously again)",
+        "「%@」（%@）のきっかけを、ここにも足す（同じ音を別の場所でも鳴らす）": "Also cue \"%@\" (%@) here (play the same sound at another place)",
+        "「%@」（%@）のきっかけを、ここへ移す": "Move the cue for \"%@\" (%@) here",
+        "ほかに %d か所": "%d more",
+        "選んだ位置にも足す": "Also add at selection",
+        "同じ音を、台本の別の場所でも鳴らす": "Play the same sound at another place in the script",
+        "1 か所目を外す（2 か所目が 1 か所目になる）": "Remove the first cue (the second becomes the first)",
+        "台本との結びつきを外す": "Unlink from the script"
     }
 }

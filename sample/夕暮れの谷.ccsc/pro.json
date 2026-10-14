@@ -1,0 +1,62 @@
+{
+  "autoFollow": false,
+  "charSpacing": 0,
+  "ends": {
+    "1835CC78-5805-4EC7-A5DC-E211F7BE6104": {
+      "line": "pos-0-10",
+      "nudge": 0.29,
+      "offset": 31
+    },
+    "24EE9FE3-FD61-49F9-8399-B1125891977B": {
+      "line": "pos-1-11",
+      "nudge": 2.17,
+      "offset": 0
+    },
+    "9F279913-83B1-464C-B34B-93377B546AA6": {
+      "line": "pos-1-1",
+      "nudge": 3.29,
+      "offset": 0
+    },
+    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8": {
+      "line": "pos-0-14",
+      "nudge": 0.7,
+      "offset": 0
+    }
+  },
+  "fontSize": 16,
+  "lineSpacing": 0.2,
+  "links": {
+    "1835CC78-5805-4EC7-A5DC-E211F7BE6104": {
+      "line": "pos-0-1",
+      "nudge": 0.8,
+      "offset": 0
+    },
+    "24EE9FE3-FD61-49F9-8399-B1125891977B": {
+      "line": "pos-1-10",
+      "nudge": 0.29,
+      "offset": 0
+    },
+    "9F279913-83B1-464C-B34B-93377B546AA6": {
+      "line": "pos-1-0",
+      "nudge": 0.74,
+      "offset": 0
+    },
+    "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8": {
+      "line": "pos-0-14",
+      "nudge": 0.23,
+      "offset": 0
+    }
+  },
+  "memos": {},
+  "midi": {
+    "bindings": [],
+    "mscReceiveID": 127,
+    "mscSendID": 127,
+    "sends": {}
+  },
+  "notes": [],
+  "outputs": {},
+  "script": "sample.scwd",
+  "version": 1,
+  "vertical": true
+}

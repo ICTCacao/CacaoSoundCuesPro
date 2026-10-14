@@ -1,0 +1,253 @@
+{
+  "formatVersion" : 1,
+  "keyCues" : [
+    {
+      "colorIndex" : 0,
+      "id" : "618A84F6-F16F-43A3-A07F-10E4250E67C7",
+      "keyCode" : 7,
+      "name" : "風が吹く",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 0,
+        "fadeOut" : 0,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "69FD009B-DAC9-4D77-8E17-4FE350B53D6C",
+        "volumeDB" : 0,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 1,
+      "id" : "0DDB7299-9B64-434C-8B7D-CF481F0A06D8",
+      "keyCode" : 3,
+      "name" : "風と風鈴",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 0,
+        "fadeOut" : 0,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "B97FDEC8-9643-4D40-BA59-8362A76D4AA8",
+        "volumeDB" : 0,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 2,
+      "id" : "1835CC78-5805-4EC7-A5DC-E211F7BE6104",
+      "keyCode" : 18,
+      "name" : "春は来るよ",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 2,
+        "fadeOut" : 3,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "8B334537-66C5-4E17-A2F9-851B91D2AAD4",
+        "volumeDB" : -13.8,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 3,
+      "id" : "9F279913-83B1-464C-B34B-93377B546AA6",
+      "keyCode" : 12,
+      "name" : "birds",
+      "play" : {
+        "curve" : "custom",
+        "fadeIn" : 1,
+        "fadeOut" : 1,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+          {
+            "db" : -0.76,
+            "id" : "B5A1EFBE-D4C8-442E-874C-40B512D59E0D",
+            "time" : 2.32
+          },
+          {
+            "db" : 0.75,
+            "id" : "82D341C3-D1ED-44ED-9FE5-68854F9EFE5E",
+            "time" : 2.49
+          },
+          {
+            "db" : 0.76,
+            "id" : "29789031-12B5-4EB0-B152-9BC2A0FFEAD7",
+            "time" : 5.04
+          },
+          {
+            "db" : -0.36,
+            "id" : "C3EA8807-9599-44B5-8C20-A8DA2E3CD78C",
+            "time" : 5.07
+          }
+        ],
+        "soundID" : "BB297136-1BF8-45F1-9A6A-A7EDEB93EDC6",
+        "volumeDB" : -16.1,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 4,
+      "id" : "76A0B9F7-DD5E-4AF0-B2F5-461DEF40256D",
+      "keyCode" : 17,
+      "name" : "bell",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 4.1,
+        "fadeOut" : 2,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "C10866CE-034B-4A5E-809C-D3B4777B19D7",
+        "volumeDB" : -19.7,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 5,
+      "id" : "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8",
+      "keyCode" : 4,
+      "name" : "door",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 0.3,
+        "fadeOut" : 0.8,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0.11447616787737575,
+        "loop" : false,
+        "loopCount" : 0,
+        "outPoint" : 2.626493503289474,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "8F5BF5AC-F411-426C-B610-731E0990770F",
+        "volumeDB" : -9.7,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    },
+    {
+      "colorIndex" : 6,
+      "id" : "24EE9FE3-FD61-49F9-8399-B1125891977B",
+      "keyCode" : 20,
+      "name" : "風よふけ",
+      "play" : {
+        "curve" : "equalPower",
+        "fadeIn" : 0,
+        "fadeOut" : 1.2,
+        "fadeOutAtEnd" : false,
+        "inPoint" : 0,
+        "loop" : false,
+        "loopCount" : 0,
+        "pan" : 0,
+        "panPoints" : [
+
+        ],
+        "soundID" : "0311A92C-E275-4332-907E-EB6F46251FC4",
+        "volumeDB" : -6.1,
+        "volumePoints" : [
+
+        ]
+      },
+      "retrigger" : "fadeOut"
+    }
+  ],
+  "keyGroups" : [
+
+  ],
+  "masterVolumeDB" : 0,
+  "name" : "夕暮れの谷",
+  "panicFade" : 2,
+  "sequences" : [
+
+  ],
+  "sounds" : [
+    {
+      "displayName" : "風が吹く",
+      "duration" : 5,
+      "fileName" : "69FD009B-DAC9-4D77-8E17-4FE350B53D6C-風が吹く.m4a",
+      "id" : "69FD009B-DAC9-4D77-8E17-4FE350B53D6C"
+    },
+    {
+      "displayName" : "風と風鈴",
+      "duration" : 5,
+      "fileName" : "B97FDEC8-9643-4D40-BA59-8362A76D4AA8-風と風鈴.m4a",
+      "id" : "B97FDEC8-9643-4D40-BA59-8362A76D4AA8"
+    },
+    {
+      "displayName" : "春は来るよ",
+      "duration" : 134.6509977324263,
+      "fileName" : "8B334537-66C5-4E17-A2F9-851B91D2AAD4-春は来るよ.m4a",
+      "id" : "8B334537-66C5-4E17-A2F9-851B91D2AAD4"
+    },
+    {
+      "displayName" : "birds",
+      "duration" : 6.362267573696145,
+      "fileName" : "BB297136-1BF8-45F1-9A6A-A7EDEB93EDC6-birds.m4a",
+      "id" : "BB297136-1BF8-45F1-9A6A-A7EDEB93EDC6"
+    },
+    {
+      "displayName" : "bell",
+      "duration" : 31.43981859410431,
+      "fileName" : "C10866CE-034B-4A5E-809C-D3B4777B19D7-bell.m4a",
+      "id" : "C10866CE-034B-4A5E-809C-D3B4777B19D7"
+    },
+    {
+      "displayName" : "door",
+      "duration" : 5.178049886621316,
+      "fileName" : "8F5BF5AC-F411-426C-B610-731E0990770F-door.m4a",
+      "id" : "8F5BF5AC-F411-426C-B610-731E0990770F"
+    },
+    {
+      "displayName" : "風よふけ",
+      "duration" : 22.19,
+      "fileName" : "0311A92C-E275-4332-907E-EB6F46251FC4-風よふけ.m4a",
+      "id" : "0311A92C-E275-4332-907E-EB6F46251FC4"
+    }
+  ]
+}

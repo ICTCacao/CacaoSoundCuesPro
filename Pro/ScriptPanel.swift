@@ -221,9 +221,10 @@ struct ScriptPanel: View {
         var out: [UUID: CueBandView.RunState] = [:]
         if let id = pro.scriptStandby { out[id] = .standby }
         // 止めている（フェードアウト中）の音は「Fading」、まだ鳴っている音は「Playing」、次に Space で止まる音は「Playing」に space の目印
-        for v in model.status where !v.armed && v.stopping { out[v.tag] = .fading }
-        for v in model.status where !v.armed && !v.stopping { out[v.tag] = .playing }
-        if let t = pro.scriptStopTarget { out[t.tag] = .stopNext }
+        // 札は、鳴らしたきっかけの線に（同じ音を何か所かで使うとき）
+        for v in model.status where !v.armed && v.stopping { out[pro.playingLink(for: v.tag)] = .fading }
+        for v in model.status where !v.armed && !v.stopping { out[pro.playingLink(for: v.tag)] = .playing }
+        if let t = pro.scriptStopTarget { out[pro.playingLink(for: t.tag)] = .stopNext }
         return out
     }
 
@@ -1571,14 +1572,7 @@ final class CueBandView: NSView {
             }
             guard let a = anchorAt?(value) else { return nil }
             if let cue = pro.selectedCue {
-                menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここのきっかけにする", cue.name, cue.label)) {
-                    pro.link(cue.id, to: a)
-                })
-                if pro.anchor(for: cue.id) != nil {
-                    menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここで止める（線の終わり）", cue.name, cue.label)) {
-                        pro.setEnd(cue.id, at: a)
-                    })
-                }
+                addLinkItems(to: menu, cue: cue, at: a)
             } else {
                 menu.addItem(NSMenuItem(title: L("先にキーかリストの曲を選ぶと、ここに結びつけられます"), action: nil, keyEquivalent: ""))
             }
@@ -1970,19 +1964,7 @@ func scriptLinkMenu(at a: CueAnchor) -> NSMenu {
         return menu
     }
     if let cue = pro.selectedCue {
-        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここのきっかけにする", cue.name, cue.label)) {
-            pro.link(cue.id, to: a)
-        })
-        if pro.anchor(for: cue.id) != nil {
-            menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここで止める（線の終わり）", cue.name, cue.label)) {
-                pro.setEnd(cue.id, at: a)
-            })
-            if pro.end(for: cue.id) != nil {
-                menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の止める位置を外す", cue.name, cue.label)) {
-                    pro.setEnd(cue.id, at: nil)
-                })
-            }
-        }
+        addLinkItems(to: menu, cue: cue, at: a)
     } else {
         menu.addItem(NSMenuItem(title: L("先にキーかリストの曲を選ぶと、ここに結びつけられます"), action: nil, keyEquivalent: ""))
     }
@@ -1994,6 +1976,31 @@ func scriptLinkMenu(at a: CueAnchor) -> NSMenu {
         }
     }
     return menu
+}
+
+/// 選んでいるキー・曲を、その位置に結びつける項目（台本の文字・帯の右クリック）。
+/// まだ結びついていなければ「ここのきっかけにする」。結びついていれば、ここにも足す（同じ音を別の場所でも鳴らす）・
+/// ここへ移す（1 か所だけのとき）・ここで止める（その位置より前でいちばん近いきっかけの線の終わり）
+@MainActor
+func addLinkItems(to menu: NSMenu, cue: CueMark, at a: CueAnchor) {
+    let pro = ProModel.shared
+    let links = pro.linkIDs(of: cue.cue)
+    guard !links.isEmpty else {
+        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここのきっかけにする", cue.name, cue.label)) { pro.link(cue.cue, to: a) })
+        return
+    }
+    menu.addItem(ClosureMenuItem(title: L("「%@」（%@）のきっかけを、ここにも足す（同じ音を別の場所でも鳴らす）", cue.name, cue.label)) {
+        pro.addLink(cue.cue, at: a)
+    })
+    if links.count == 1 {
+        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）のきっかけを、ここへ移す", cue.name, cue.label)) { pro.link(cue.cue, to: a) })
+    }
+    if let link = pro.nearestLink(of: cue.cue, before: a) {
+        menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を、ここで止める（線の終わり）", cue.name, cue.label)) { pro.setEnd(link, at: a) })
+        if pro.end(for: link) != nil {
+            menu.addItem(ClosureMenuItem(title: L("「%@」（%@）の止める位置を外す", cue.name, cue.label)) { pro.setEnd(link, at: nil) })
+        }
+    }
 }
 
 /// 押したときに処理を呼ぶメニュー項目

@@ -14,28 +14,53 @@ struct ProCueLinkRow: View {
         ProMIDIRow(cueID: cueID)
         if pro.hasScript {
             VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Label(L("きっかけ"), systemImage: "text.book.closed")
-                    .fixedSize()
-                if let anchor = pro.anchor(for: cueID) {
+            if let anchor = pro.anchor(for: cueID) {
+                // 1 段目: きっかけの位置（と、ほかに何か所あるか）
+                HStack(spacing: 8) {
+                    Label(L("きっかけ"), systemImage: "text.book.closed")
+                        .fixedSize()
                     if let text = pro.summary(anchor) {
                         Text(text)
                             .lineLimit(1)
                             .truncationMode(.tail)
-                        Spacer(minLength: 4)
-                        Button { reveal(anchor) } label: { Label(L("台本で見る"), systemImage: "eye") }
                     } else {
                         Text(L("台本の中に見つかりません（台本が直された？）"))
                             .foregroundStyle(.orange)
-                        Spacer(minLength: 4)
                     }
+                    Spacer(minLength: 4)
+                    // 同じ音を別の場所でも鳴らす（2 か所目から）
+                    let others = pro.linkIDs(of: cueID).count - 1
+                    if others > 0 {
+                        Text(L("ほかに %d か所", others))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                    }
+                }
+                // 2 段目: ボタン（横に詰めると名前が省かれて読めないため、段を分ける）
+                HStack(spacing: 8) {
+                    let others = pro.linkIDs(of: cueID).count - 1
+                    if pro.summary(anchor) != nil {
+                        Button { reveal(anchor) } label: { Label(L("台本で見る"), systemImage: "eye") }
+                    }
+                    Spacer(minLength: 4)
                     if !model.showMode {
                         if let sel = pro.selected, sel != anchor {
-                            Button { pro.link(cueID, to: sel) } label: { Label(L("選んだ位置へ移す"), systemImage: "arrow.right.circle") }
+                            Button { pro.addLink(cueID, at: sel) } label: { Label(L("選んだ位置にも足す"), systemImage: "plus.circle") }
+                                .help(L("同じ音を、台本の別の場所でも鳴らす"))
+                            if others == 0 {
+                                Button { pro.link(cueID, to: sel) } label: { Label(L("選んだ位置へ移す"), systemImage: "arrow.right.circle") }
+                            }
                         }
                         Button { pro.unlink(cueID) } label: { Label(L("外す"), systemImage: "xmark") }
+                            .help(others > 0 ? L("1 か所目を外す（2 か所目が 1 か所目になる）") : L("台本との結びつきを外す"))
                     }
-                } else {
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            } else {
+                HStack(spacing: 8) {
+                    Label(L("きっかけ"), systemImage: "text.book.closed")
+                        .fixedSize()
                     Text(pro.selected != nil && !model.showMode
                          ? L("台本で選んだ位置に結びつけられます")
                          : L("台本の文字をクリックして位置を選ぶか、右クリックで結びつけます"))

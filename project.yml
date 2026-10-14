@@ -41,8 +41,8 @@ targets:
       properties:
         CFBundleDisplayName: CacaoSoundCuesPro
         CFBundleName: CacaoSoundCuesPro
-        CFBundleShortVersionString: "5.1.0"
-        CFBundleVersion: "5.1.0"
+        CFBundleShortVersionString: "5.1.1"
+        CFBundleVersion: "5.1.1"
         LSMinimumSystemVersion: "14.0"
         CFBundleDevelopmentRegion: ja
         CFBundleLocalizations: [ja, en]
