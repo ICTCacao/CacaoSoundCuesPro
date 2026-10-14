@@ -318,11 +318,41 @@ The line starts exactly where you clicked (even between lines).
 
 | Where you right-click | What you can do |
 |---|---|
-| Empty space | **Cue the selected key or track here** / **Stop here** / **Write a note here…** |
+| Empty space | **Cue the selected key or track here** (if already linked: **Also cue here** / Move here) / **Stop here** / **Write a note here…** |
 | Badge or line | **Play** / **Stop** (while playing) / Write memo / Stop here<br>Reset line position / Remove stop point / **Unlink** (remove from the script) |
 | A note | Edit memo / Delete memo |
 
 <span class="small">In Show Mode, only Play and Stop are available.</span>
+
+---
+
+## Using the same sound in several places
+
+<div class="cols">
+<div>
+
+### Same settings → add more cue points
+
+- Select the key or track, right-click another spot in the band → “**Also cue … here**”
+- Or use “**Also add at selection**” in the inspector’s Cue point row (it then shows “n more”)
+- Each place gets its own line in the band, with its own stop point and memo
+- In Script Run, each one is a separate Standby. Playing shows on the line you played
+
+<span class="small">For a key or track that is already linked, “Move here” (shown when it has only one cue point) moves the existing cue point.</span>
+
+</div>
+<div>
+
+### Different volume → copy the key
+
+- On the keyboard, hold <kbd>option</kbd> and drag the key onto an **empty key**
+- You get **another key** with the same sound, volume, fades and output
+- Change the copy’s volume and link it to another place in the script
+
+<span class="small">Cue points and “Send MIDI” settings are not copied (so a lighting console doesn’t get two messages). If the target key is already assigned, nothing is overwritten and you are told.</span>
+
+</div>
+</div>
 
 ---
 
