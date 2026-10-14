@@ -1,5 +1,5 @@
 name: CacaoSoundCuesPro
-# CacaoSoundCues Pro（非公開）。となりの公開版 ../CacaoSoundCues のソースに、Pro の機能（Pro/）を足してビルドする。
+# CacaoSoundCues Pro（オープンソース・MIT）。となりの公開版 ../CacaoSoundCues のソースに、Pro の機能（Pro/）を足してビルドする。
 # 公開版のソースの中の `#if PRO` が、Pro の機能への差し込み口
 options:
   bundleIdPrefix: com.ictcacao
@@ -41,8 +41,8 @@ targets:
       properties:
         CFBundleDisplayName: CacaoSoundCuesPro
         CFBundleName: CacaoSoundCuesPro
-        CFBundleShortVersionString: "5.0.3"
-        CFBundleVersion: "5.0.3"
+        CFBundleShortVersionString: "5.1.0"
+        CFBundleVersion: "5.1.0"
         LSMinimumSystemVersion: "14.0"
         CFBundleDevelopmentRegion: ja
         CFBundleLocalizations: [ja, en]

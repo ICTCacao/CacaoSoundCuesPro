@@ -49,7 +49,7 @@ footer: "CacaoSoundCues Pro Manual / ICTCacao"
 # CacaoSoundCues Pro Manual
 
 Script-linked sound cue playback for the stage
-Version 5.0.2 / October 2026
+Version 5.1.0 / October 2026
 
 ---
 
@@ -58,7 +58,7 @@ Version 5.0.2 / October 2026
 1. What Pro adds (differences from the free version)
 2. Importing and displaying a script
 3. Linking cues to the script (the cue band)
-4. Following the script and playing from the band during a show
+4. Following the script, playing from the band, and **Script Run** (play cues in script order with Enter)
 5. Outputs (sending sounds to several speakers or devices)
 6. Running with a backup Mac
 7. MIDI control (controllers and lighting consoles)
@@ -78,6 +78,7 @@ Version 5.0.2 / October 2026
 - Shows a ScenarioWriterSolo script (.scwd) or an ordinary **PDF** script beside the main window
 - Links keys and list tracks to **positions in the script text**
 - A **cue band** under each page, like a sound operator’s marked-up script
+- **Script Run**: Standby moves through the script in order — Enter plays, Space stops
 
 ### Outputs
 
@@ -109,9 +110,9 @@ Version 5.0.2 / October 2026
 <div class="cols">
 <div>
 
-1. Double-click **CacaoSoundCuesPro.zip** to unzip it
-2. Move **CacaoSoundCuesPro** into the **Applications** folder
-3. Double-click to launch
+1. Double-click **CacaoSoundCuesPro-5.1.0.dmg** to open it
+2. Drag **CacaoSoundCuesPro** onto **Applications**
+3. Double-click CacaoSoundCuesPro in the Applications folder to launch
 
 <span class="small">It can sit next to the free version (CacaoSoundCues). Settings are kept separately.</span>
 
@@ -338,6 +339,7 @@ The line starts exactly where you clicked (even between lines).
 ### Turning pages automatically
 
 - ⋯ → **Turn pages to the Standby cue automatically** (off by default; you turn the pages yourself)
+- In Script Run, the page turns **after the cue you just played finishes** (see the next section)
 
 </div>
 <div>
@@ -349,6 +351,67 @@ The line starts exactly where you clicked (even between lines).
 - The yellow horizontal line is **the current volume** (it moves with fades and volume lines)
 
 <span class="small">In Show Mode, links and notes cannot be changed (playing and stopping still work).</span>
+
+</div>
+</div>
+
+---
+
+## Script Run (play cues in script order with Enter)
+
+<div class="cols">
+<div>
+
+Click **Script Run** in the script panel header to play cues **in script order** (the order of the cue lines).
+
+- The first cue in the script goes on **Standby**
+- <kbd>return</kbd> (Enter): play the Standby cue and move Standby to the next cue
+- <kbd>space</kbd>: stop one playing sound (with its own fade-out setting)
+- <kbd>↑</kbd> <kbd>↓</kbd>: move Standby to the previous / next cue
+- <kbd>esc</kbd> (Stop All): stop everything and end Script Run
+
+</div>
+<div>
+
+### What you see during Script Run
+
+- While it is on, the button reads **End Run**. Click it to clear Standby from the script and go back to normal
+- Tags under the cue name on each cue line: **Standby** (orange), **Playing** (green), **Fading** (gray, being stopped)
+- The sound that Space will stop next has a <kbd>space</kbd> mark after Playing
+- The bottom bar (page row) shows Standby and “space ▸ the track that will stop”
+- List tracks linked to the script show Standby / Playing in the list too
+
+</div>
+</div>
+
+---
+
+## Script Run rules
+
+<div class="cols">
+<div>
+
+### Which sound Space stops
+
+- **Follows the cue lines**: among sounds with a stop position (F.O./C.O.), the one that **ends first in the script**
+- If none of those are playing, the sound started most recently
+- When in doubt, the sound with the <kbd>space</kbd> mark is the one that stops
+
+### Changing Standby
+
+- <kbd>↑</kbd> <kbd>↓</kbd>, **double-click** a label in the band, or right-click → “Put on Standby”
+- ⌘-click a tag in the band to play it; Standby moves to the cue after it (continue from there)
+
+</div>
+<div>
+
+### Lists become “places to keep tracks”
+
+- During Script Run, lists **don’t play continuously**. Tracks play one at a time, with Enter
+- List start/stop keys and the Start button don’t work
+- Playing sounds by pressing their keys (the key map) works as usual
+
+<span class="small">Script Run on/off is saved on this Mac (like Show Mode, it stays on after relaunching). When running with a backup Mac, the main Mac’s actions reach the backup too. Pressing Esc by hand on the backup only stops the sound.</span>
 
 </div>
 </div>

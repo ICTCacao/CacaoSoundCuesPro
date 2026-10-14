@@ -1,6 +1,12 @@
-# CacaoSoundCues Pro（非公開）
+# CacaoSoundCues Pro
 
-舞台のポン出しアプリ [CacaoSoundCues](https://github.com/ICTCacao/CacaoSoundCues)（公開・MIT）の Pro 版。Mac だけ。
+舞台のポン出しアプリ [CacaoSoundCues](https://github.com/ICTCacao/CacaoSoundCues) の Pro 版（Mac 用・無料・オープンソース）。
+無料版の機能に、**台本連動**（ScenarioWriterSolo の台本・PDF の台本を横に出し、きっかけを台本の位置に結びつける）、
+**台本進行**（Enter で台本の順に鳴らす）、**出力の系統**（複数の出力）、**バックアップ機との同時運転**、**MIDI コントロール**を足したもの。
+
+- ダウンロード: [Releases](https://github.com/ICTCacao/CacaoSoundCuesPro/releases) の `CacaoSoundCuesPro-<版>.dmg` と、マニュアル（日本語・英語の PDF）
+- 対応: macOS 14 以降。画面は日本語／English
+- ライセンス: MIT（[LICENSE](LICENSE)）
 
 ## 作り
 
@@ -10,10 +16,16 @@
 - アプリ名は CacaoSoundCuesPro.app（bundle id `com.ictcacao.CacaoSoundCuesPro`）。設定は無料版と別に保存される
 
 ```sh
+git clone https://github.com/ICTCacao/CacaoSoundCues.git
+git clone https://github.com/ICTCacao/CacaoSoundCuesPro.git
+cd CacaoSoundCuesPro
 xcodegen generate
 xcodebuild -scheme CacaoSoundCuesPro -configuration Release -derivedDataPath build/dd build
-cp -R build/dd/Build/Products/Release/CacaoSoundCuesPro.app dist/
+rm -rf dist/CacaoSoundCuesPro.app && cp -R build/dd/Build/Products/Release/CacaoSoundCuesPro.app dist/
+./make-dmg.sh   # dist/CacaoSoundCuesPro-<版>.dmg（古い版の dmg は消す）
 ```
+
+版は `project.yml` と `Pro/Resources/Info.plist`、マニュアルの表紙（`manual/*.md`）に書く。5.1.0 から公開版とは別に数える。
 
 ## マニュアル
 

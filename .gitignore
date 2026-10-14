@@ -3,5 +3,7 @@ xcuserdata/
 *.xcuserstate
 build/
 *.xcodeproj/
+# 配布物: dmg と PDF は残し、.app はビルドで再生成する
 dist/*.app
 dist/*.zip
+dist/.tmp-*.dmg
