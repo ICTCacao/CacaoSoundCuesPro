@@ -26,6 +26,10 @@ enum SyncOp: Codable, Equatable {
     case page(Int)
     /// 台本をスクロールで流した位置（ページ単位）
     case scroll(Double)
+    /// 台本進行の入・切、Standby、台本の印から鳴らす（Enter・Space は advance・endSong で届く）
+    case scriptRun(Bool)
+    case scriptStandby(UUID?)
+    case scriptPlay(UUID)
 }
 
 /// やりとりする知らせ
@@ -116,6 +120,8 @@ final class ProSync {
     private var remote = false
     /// 操作の入れ子の深さ（中から呼ばれた操作は送らない）
     private var depth = 0
+    /// 相手（メイン機）から届いた操作を実行している最中か
+    var applyingRemote: Bool { remote }
 
     private init() {
         role = Role(rawValue: UserDefaults.standard.string(forKey: "pro.sync.role") ?? "") ?? .off
@@ -216,6 +222,9 @@ final class ProSync {
         case .stopMark(let id): ProModel.shared.stop(markID: id)
         case .page(let p): ProModel.shared.page = p
         case .scroll(let pos): ProModel.shared.scrollRequest = pos
+        case .scriptRun(let on): ProModel.shared.setScriptRun(on)
+        case .scriptStandby(let id): ProModel.shared.setStandby(id)
+        case .scriptPlay(let id): ProModel.shared.play(markID: id)
         }
     }
 

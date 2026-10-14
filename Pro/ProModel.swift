@@ -250,7 +250,11 @@ final class ProModel {
     static let scriptFolder = "Script"
 
     private(set) var data = ProData()
-    private(set) var script: ScriptDocument?
+    private(set) var script: ScriptDocument? {
+        didSet { lineOrderCache = nil }
+    }
+    /// 台本の行の uid → 台本の頭からの行の番号（台本の順に並べるのに使う。台本が変わったら作り直す）
+    @ObservationIgnored private var lineOrderCache: [String: Int]?
     /// ふつうの PDF の台本（ScenarioWriterSolo の台本の代わり）
     private(set) var pdf: PDFDocument?
     /// 台本（.scwd か PDF）があるか
@@ -284,6 +288,13 @@ final class ProModel {
     var selected: CueAnchor?
     /// 自動でページを送ってほしい行（台本のパネルがページを探して送る）
     var revealRequest: String?
+    /// 台本進行: 台本の順に Standby を進め、Enter（Return）で鳴らす・Space で止める。リストの続けて鳴らすは使わない
+    /// （この Mac に保存。本番モードと同じく、起動し直しても続く）
+    private(set) var scriptRunOn = UserDefaults.standard.bool(forKey: "pro.scriptRun") {
+        didSet { UserDefaults.standard.set(scriptRunOn, forKey: "pro.scriptRun") }
+    }
+    /// 台本進行の Standby（次に Enter で鳴らすきっかけ。キーかリストの曲の ID）。nil なら最後まで鳴らした
+    private(set) var scriptStandby: UUID?
 
     /// まだキューシートに保存していない台本（取り込んだ元のファイル）
     @ObservationIgnored private var pendingScript: URL?
@@ -303,6 +314,7 @@ final class ProModel {
         packageURL = nil
         page = 0
         selected = nil
+        scriptStandby = nil
     }
 
     /// キューシートを開いたとき
@@ -317,6 +329,8 @@ final class ProModel {
             let file = url.appendingPathComponent(Self.scriptFolder).appendingPathComponent(name)
             if Self.isPDFFile(file) { pdf = Self.loadPDF(file) } else { script = try? ScriptDocument.load(file) }
         }
+        // 台本進行のまま開いたら、台本の頭のきっかけを Standby に
+        if scriptRun { scriptStandby = orderedMarks().first?.id }
     }
 
     /// キューシートを保存したとき（別名で保存なら、前の場所の台本もコピーする）
@@ -582,11 +596,12 @@ final class ProModel {
 
     /// その印の音だけを止める（Esc の全停止ではなく、その音のフェードアウト設定で）。
     /// リストの曲は、曲だけ止めると次の曲が続いて鳴ることがあるので、そのリストを停止フェードで止める
+    /// （台本進行で 1 曲だけ鳴らしたときは、リストは鳴っていないので、その曲だけを止める）
     func stop(markID: UUID) {
         guard ProSync.shared.begin(.stopMark(markID)) else { return }
         defer { ProSync.shared.end() }
-        for seq in model.show.sequences where seq.steps.contains(where: { $0.id == markID }) {
-            if model.isRunning(seq.id) { model.stopSequence(seq.id) }
+        for seq in model.show.sequences where model.isRunning(seq.id) && seq.steps.contains(where: { $0.id == markID }) {
+            model.stopSequence(seq.id)
             return
         }
         for st in model.status where st.tag == markID {
@@ -594,8 +609,17 @@ final class ProModel {
         }
     }
 
-    /// 台本の印から鳴らす（⌘／control＋クリック）。キーはそのキーを押したのと同じ、リストの曲はその曲から始める
+    /// 台本の印から鳴らす（⌘／control＋クリック）。キーはそのキーを押したのと同じ、リストの曲はその曲から始める。
+    /// 台本進行では、その曲だけを鳴らし、Standby をその次のきっかけへ（そこから進める）
     func play(markID: UUID) {
+        if scriptRun {
+            guard ProSync.shared.begin(.scriptPlay(markID)) else { return }
+            defer { ProSync.shared.end() }
+            playAlone(markID)
+            waitToFollow(markID)
+            scriptStandby = mark(after: markID)
+            return
+        }
         if let cue = model.show.keyCues.first(where: { $0.id == markID }) {
             model.trigger(cue)
             return
@@ -606,6 +630,199 @@ final class ProModel {
                 return
             }
         }
+    }
+
+    // MARK: - 台本進行
+
+    /// 台本進行をしているか（台本が無ければ、切り替えてあってもしない）
+    var scriptRun: Bool { scriptRunOn && hasScript }
+
+    /// 台本進行の入・切（モード切り替えボタン）。入れると、リストの続きはやめ（鳴っている曲は最後まで）、
+    /// 台本の最初のきっかけを Standby にして、そのページを出す。切ると、台本から Standby を消す
+    func setScriptRun(_ on: Bool) {
+        guard ProSync.shared.begin(.scriptRun(on)) else { return }
+        defer { ProSync.shared.end() }
+        AppModel.endEditing()
+        scriptRunOn = on
+        followAfter = nil
+        guard on else {
+            scriptStandby = nil
+            return
+        }
+        model.releaseSequenceRun()
+        let ordered = orderedMarks()
+        scriptStandby = ordered.first?.id
+        if let first = ordered.first { revealRequest = first.start.line }
+        if ordered.isEmpty {
+            model.message = L("台本に結びついたきっかけがありません。キーやリストの曲を、台本の位置に結びつけてください。")
+        }
+    }
+
+    /// Esc（全停止）: 台本進行も解除し、台本から Standby を消す。
+    /// バックアップ機で手で押した Esc は音を止めるだけ（解除するとメイン機とずれる。メイン機の Esc なら、届いて一緒に解除する）
+    func panicked() {
+        guard scriptRunOn else { return }
+        if ProSync.shared.role == .backup && !ProSync.shared.applyingRemote { return }
+        setScriptRun(false)
+    }
+
+    /// Standby を決める（↑↓・帯の右クリック・リストのダブルクリック）
+    func setStandby(_ id: UUID?) {
+        guard ProSync.shared.begin(.scriptStandby(id)) else { return }
+        defer { ProSync.shared.end() }
+        scriptStandby = id
+        if let id, let m = allMarks().first(where: { $0.id == id }) {
+            selectCue(m)
+        }
+    }
+
+    /// Enter（Return）: Standby を鳴らし、Standby を台本の次のきっかけへ（AppModel の「次の曲へ」から呼ぶ）
+    func scriptGo() {
+        guard let id = scriptStandby, allMarks().contains(where: { $0.id == id }) else {
+            NSSound.beep()
+            return
+        }
+        playAlone(id)
+        waitToFollow(id)
+        scriptStandby = mark(after: id)
+    }
+
+    /// 「自動でページを送る」: 台本進行で鳴らしたきっかけが鳴り終わるまで、Standby のページへ送るのを待つ
+    /// （鳴らしたきっかけのキューラインを見ていられるように）
+    @ObservationIgnored private(set) var followAfter: (cue: UUID, since: Date, seen: Bool)?
+
+    private func waitToFollow(_ cue: UUID) {
+        followAfter = data.autoFollow ? (cue, Date(), false) : nil
+    }
+
+    /// 鳴っている音が変わったとき（台本のパネルから）: 待っていたきっかけが鳴り終わったら、Standby のページへ送る。
+    /// 鳴らした直後はまだ音が始まっていないことがあるので、一度鳴ったのを見るか、1 秒たってから判断する
+    func checkFollow() {
+        guard let f = followAfter else { return }
+        if isPlaying(markID: f.cue) {
+            if !f.seen { followAfter?.seen = true }
+            return
+        }
+        guard f.seen || Date().timeIntervalSince(f.since) > 1 else { return }
+        followAfter = nil
+        if scriptRun, data.autoFollow, let line = scriptStandbyMark?.start.line { revealRequest = line }
+    }
+
+    /// Space: いちばん後に鳴らし始めた音を、その音のフェードアウト設定で止める（もう一度押すと、その前の音）
+    func scriptStop() {
+        guard let target = scriptStopTarget else { return }
+        model.output.mixer.send(.stopToken(target.token, fadeFrames: -1))
+    }
+
+    /// 次に Space で止まる音。キューラインどおり: 止める位置（F.O./C.O.）のある音は、台本でいちばん先に終わる音から。
+    /// 止める位置のある音が鳴っていなければ、いちばん後に鳴らし始めた音。まだ止めていない音だけ。画面に「space」の目印を出す
+    var scriptStopTarget: VoiceStatus? {
+        let playing = model.status.filter { !$0.armed && !$0.stopping && $0.owner != AppModel.previewOwner }
+        var best: (voice: VoiceStatus, end: Double)?
+        for v in playing {
+            guard let a = data.ends[v.tag.uuidString], let e = scriptPosition(a) else { continue }
+            // 同じ位置で終わるものは、後に鳴らし始めた方から
+            if best == nil || e < best!.end || (e == best!.end && v.token > best!.voice.token) { best = (v, e) }
+        }
+        return best?.voice ?? playing.max { $0.token < $1.token }
+    }
+
+    /// 次に Space で止まるきっかけ（下の帯に出す）
+    var scriptStopMark: CueMark? {
+        guard let t = scriptStopTarget else { return nil }
+        return allMarks().first { $0.id == t.tag }
+    }
+
+    /// ↑↓: Standby を台本の前・次のきっかけへ
+    func moveStandby(by delta: Int) {
+        let ordered = orderedMarks()
+        guard !ordered.isEmpty else { return }
+        let index: Int
+        if let id = scriptStandby, let i = ordered.firstIndex(where: { $0.id == id }) {
+            index = min(max(i + delta, 0), ordered.count - 1)
+        } else {
+            // 最後まで鳴らした後の ↑ は、最後のきっかけへ
+            index = delta < 0 ? ordered.count - 1 : 0
+        }
+        setStandby(ordered[index].id)
+    }
+
+    /// リストの曲のダブルクリック（「次に鳴らす曲にする」）: 台本に結びついていれば、その曲を Standby に
+    func cueFromList(_ stepID: UUID) {
+        if let a = anchor(for: stepID), contains(a) {
+            setStandby(stepID)
+        } else {
+            model.message = L("この曲は台本に結びついていないので、台本進行の Standby にできません。")
+        }
+    }
+
+    /// きっかけを 1 つだけ鳴らす。キーはそのキーを押したのと同じ、リストの曲はその曲だけ（リストとしては進めない）
+    private func playAlone(_ id: UUID) {
+        if let cue = model.show.keyCues.first(where: { $0.id == id }) {
+            model.trigger(cue)
+        } else {
+            model.playStepAlone(id)
+        }
+    }
+
+    /// 台本の順で、そのきっかけの次のきっかけ（最後なら nil）
+    private func mark(after id: UUID) -> UUID? {
+        let ordered = orderedMarks()
+        guard let i = ordered.firstIndex(where: { $0.id == id }), i + 1 < ordered.count else { return nil }
+        return ordered[i + 1].id
+    }
+
+    /// Standby にしたきっかけを、キー・リストの曲として選ぶ（インスペクタに出す）
+    private func selectCue(_ m: CueMark) {
+        switch m.kind {
+        case .key(let code, _):
+            model.selection = .key(code)
+        case .step:
+            for seq in model.show.sequences where seq.steps.contains(where: { $0.id == m.id }) {
+                model.selectedSequenceID = seq.id
+                model.selection = .step(sequence: seq.id, step: m.id)
+            }
+        }
+    }
+
+    /// 台本に結びついたきっかけを、台本の順（場面・行・文字の位置）に並べる。台本の中に見つからないものは除く
+    func orderedMarks() -> [CueMark] {
+        // 同じ位置なら、キー・リストの並び（allMarks の順）のまま
+        var found: [(mark: CueMark, pos: Double, index: Int)] = []
+        for (i, m) in allMarks().enumerated() {
+            if let p = scriptPosition(m.start) { found.append((m, p, i)) }
+        }
+        found.sort { a, b in a.pos != b.pos ? a.pos < b.pos : a.index < b.index }
+        return found.map(\.mark)
+    }
+
+    /// 台本の中の位置（台本の順に比べるための数。場面 → 行 → 文字の位置 ＋ ずらした量。PDF はページ → ページの中の位置）。
+    /// 台本の中に見つからなければ nil
+    func scriptPosition(_ a: CueAnchor) -> Double? {
+        if pdf != nil {
+            guard contains(a), let g = PDFAnchor.global(a) else { return nil }
+            return Double(g) + (a.nudge ?? 0)
+        }
+        guard let script else { return nil }
+        if lineOrderCache == nil {
+            var order: [String: Int] = [:]
+            var n = 0
+            for scene in script.scenes where scene.valid {
+                for l in scene.lines {
+                    order[l.uid] = n
+                    n += 1
+                }
+            }
+            lineOrderCache = order
+        }
+        guard let l = lineOrderCache?[a.line] else { return nil }
+        return Double(l) * 100_000 + Double(a.offset) + (a.nudge ?? 0)
+    }
+
+    /// 台本進行の Standby のきっかけ（画面に出す）
+    var scriptStandbyMark: CueMark? {
+        guard let id = scriptStandby else { return nil }
+        return allMarks().first { $0.id == id }
     }
 
     var selectedCue: CueMark? {
@@ -627,7 +844,9 @@ final class ProModel {
     /// 次に鳴る（Standby）・鳴っているキューの ID（台本の印を明るくする）
     var activeCueIDs: Set<UUID> {
         var ids = Set<UUID>()
-        if let seqID = model.activeSequenceID, let seq = model.show.sequences.first(where: { $0.id == seqID }),
+        if scriptRun {
+            if let id = scriptStandby { ids.insert(id) }
+        } else if let seqID = model.activeSequenceID, let seq = model.show.sequences.first(where: { $0.id == seqID }),
            let i = model.upcomingIndex(seqID), seq.steps.indices.contains(i) {
             ids.insert(seq.steps[i].id)
         }

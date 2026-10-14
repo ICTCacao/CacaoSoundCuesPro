@@ -192,6 +192,18 @@
         "値": "Value",
         "キューの番号": "Cue number",
         "機器の番号 %d": "Device ID %d",
-        "MIDI コントローラ・照明卓（MSC）で操作する、照明卓などへ MIDI を送る": "Operate from MIDI controllers or a lighting console (MSC), and send MIDI to lighting consoles"
+        "MIDI コントローラ・照明卓（MSC）で操作する、照明卓などへ MIDI を送る": "Operate from MIDI controllers or a lighting console (MSC), and send MIDI to lighting consoles",
+        "台本進行": "Script Run",
+        "台本に結びついたきっかけがありません。キーやリストの曲を、台本の位置に結びつけてください。": "No cues are linked to the script. Link keys or list songs to positions in the script.",
+        "この曲は台本に結びついていないので、台本進行の Standby にできません。": "This song isn't linked to the script, so it can't be put on Standby in Script Run.",
+        "「%@」（%@）を Standby にする": "Put \"%@\" (%@) on Standby",
+        "（最後のきっかけまで鳴らしました）": "(All cues have been played)",
+        "⏎ 再生 ・ space 停止 ・ ↑↓ Standby": "⏎ Play · space Stop · ↑↓ Standby",
+        "⏎ 再生 ・ space 停止": "⏎ Play · space Stop",
+        "台本進行中は、リストを続けて鳴らしません（曲の音源設定だけ使います）。ダブルクリックで、その曲を台本進行の Standby にします。": "In Script Run, lists don't play continuously (only the songs' sound settings are used). Double-click a song to put it on Script Run Standby.",
+        "台本進行の Standby にする": "Put on Script Run Standby",
+        "台本進行: 台本の最初のきっかけを Standby にし、Enter（Return）で鳴らす・Space で止める。リストは続けて鳴らさず、曲の音源設定だけ使う": "Script Run: put the first cue in the script on Standby, play with Enter (Return), stop with Space. Lists don't play continuously; only their songs' sound settings are used",
+        "進行解除": "End Run",
+        "台本進行をやめて、台本から Standby を消す（リストを続けて鳴らせるように戻る）": "End Script Run and remove Standby from the script (lists can play continuously again)"
     }
 }

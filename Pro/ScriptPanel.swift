@@ -189,6 +189,7 @@ struct ScriptPanel: View {
                                 marks: pro.allMarks(),
                                 notes: pro.data.notes,
                                 active: pro.activeCueIDs,
+                                runStates: runStates,
                                 selected: pro.selected,
                                 keyCues: model.show.keyCues,
                                 sequences: model.show.sequences,
@@ -207,9 +208,23 @@ struct ScriptPanel: View {
         }
         .background(Theme.panel)
         // 「自動でページを送る」が ON なら、Standby が移ったときにそのきっかけのページへ
+        // 台本進行で鳴らしたときは、鳴らしたきっかけ（Playing）が鳴り終わってから送る
         .onChange(of: standbyLine) { _, uid in
-            if pro.data.autoFollow, let uid { pro.revealRequest = uid }
+            if pro.data.autoFollow, let uid, !(pro.scriptRun && pro.followAfter != nil) { pro.revealRequest = uid }
         }
+        .onChange(of: model.status) { pro.checkFollow() }
+    }
+
+    /// 台本進行中: 帯に「Standby」「Playing」と書くきっかけ
+    private var runStates: [UUID: CueBandView.RunState] {
+        guard pro.scriptRun else { return [:] }
+        var out: [UUID: CueBandView.RunState] = [:]
+        if let id = pro.scriptStandby { out[id] = .standby }
+        // 止めている（フェードアウト中）の音は「Fading」、まだ鳴っている音は「Playing」、次に Space で止まる音は「Playing」に space の目印
+        for v in model.status where !v.armed && v.stopping { out[v.tag] = .fading }
+        for v in model.status where !v.armed && !v.stopping { out[v.tag] = .playing }
+        if let t = pro.scriptStopTarget { out[t.tag] = .stopNext }
+        return out
     }
 
     /// 表示する台本（ScenarioWriterSolo の台本か PDF）
@@ -218,8 +233,9 @@ struct ScriptPanel: View {
         return pro.displayScript.map { .text($0) }
     }
 
-    /// Standby の曲が結びついている台本の行
+    /// Standby の曲が結びついている台本の行（台本進行中は、台本進行の Standby）
     private var standbyLine: String? {
+        if pro.scriptRun { return pro.scriptStandbyMark?.start.line }
         guard let seqID = model.activeSequenceID, let seq = model.show.sequences.first(where: { $0.id == seqID }),
               let i = model.upcomingIndex(seqID), seq.steps.indices.contains(i) else { return nil }
         return pro.anchor(for: seq.steps[i].id)?.line
@@ -233,6 +249,21 @@ struct ScriptPanel: View {
                 .lineLimit(1)
             Spacer()
             if pro.hasScript {
+                // 台本進行の入・切（Enter で台本の順に鳴らす。リストは続けて鳴らさない）
+                // 台本進行中は「進行解除」（押すと台本から Standby を消し、ふだんのリストの操作に戻る）
+                if pro.scriptRun {
+                    Button { pro.setScriptRun(false) } label: {
+                        Label(L("進行解除"), systemImage: "xmark.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .help(L("台本進行をやめて、台本から Standby を消す（リストを続けて鳴らせるように戻る）"))
+                } else {
+                    Button { pro.setScriptRun(true) } label: {
+                        Label(L("台本進行"), systemImage: "text.line.first.and.arrowtriangle.forward")
+                    }
+                    .help(L("台本進行: 台本の最初のきっかけを Standby にし、Enter（Return）で鳴らす・Space で止める。リストは続けて鳴らさず、曲の音源設定だけ使う"))
+                }
                 // 縦書き・横書きの切り替え（ScenarioWriterSolo の「縦書き / 横書き」ボタンと同じ）。
                 // PDF は向きを変えられないので、台本の向き（ページを送る向きと、帯の場所）を選ぶ
                 Picker("", selection: Binding(get: { pro.data.vertical }, set: { pro.setVertical($0) })) {
@@ -340,10 +371,15 @@ struct ScriptPanel: View {
                     .frame(minWidth: 60)
                 Button { pro.turn(vertical ? -1 : 1) } label: { Image(systemName: "chevron.right") }
                     .disabled(vertical ? pro.page <= 0 : pro.page >= pro.pageCount - 1)
-                Text(L("← → でページ送り"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
+                if pro.scriptRun {
+                    // 台本進行の Standby（台本の上に帯を足すと台本の広さが変わり、組み直しで画面がちらつくので、ここに）
+                    ScriptRunStrip()
+                } else {
+                    Text(L("← → でページ送り"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
             }
             // 「次のページ」の行は、無くても場所を取っておく（帯の高さが変わると台本の広さが変わり、
             // ページの区切りが変わって「次のページ」が出たり消えたりをくり返し、固まるため）
@@ -369,6 +405,64 @@ struct ScriptPanel: View {
     /// 次のページにあるきっかけ（台本のパネルがページの行を教える）
     private var nextPageMarks: [CueMark] {
         ScriptPageIndex.shared.lines(onPage: pro.page + 1).flatMap { pro.marks(for: $0) }
+    }
+}
+
+/// 台本進行中に下の帯（ページ送りの行）に出す: Standby のきっかけと、操作キーの案内。
+/// 高さは変えない（変わると台本の広さが変わって組み直しになるため）
+private struct ScriptRunStrip: View {
+    private var pro: ProModel { ProModel.shared }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("Standby")
+                .font(.caption.bold())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .background(Capsule().fill(Color.orange))
+                .fixedSize()
+            if let m = pro.scriptStandbyMark {
+                MarkBadge(mark: m, lit: true)
+                Text(m.name)
+                    .font(.callout.bold())
+                    .lineLimit(1)
+                if !m.memo.isEmpty {
+                    Text(m.memo)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Text(L("（最後のきっかけまで鳴らしました）"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            // 次に Space で止まるきっかけ（鳴っている音が重なっていても、どれが止まるかわかるように）
+            if let s = pro.scriptStopMark {
+                Text("space ▸")
+                    .font(.caption.bold())
+                    .fixedSize()
+                MarkBadge(mark: s, lit: true)
+                Text(s.name)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            // 狭いときは案内を省く
+            ViewThatFits(in: .horizontal) {
+                Text(L("⏎ 再生 ・ space 停止 ・ ↑↓ Standby"))
+                Text(L("⏎ 再生 ・ space 停止"))
+                EmptyView()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 22)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.orange.opacity(0.15)))
     }
 }
 
@@ -537,6 +631,8 @@ struct ScriptPager: NSViewRepresentable {
     let marks: [CueMark]
     let notes: [ScriptNote]
     let active: Set<UUID>
+    /// 台本進行中の「Standby」「Playing」
+    let runStates: [UUID: CueBandView.RunState]
     let selected: CueAnchor?
     let keyCues: [KeyCue]
     let sequences: [CueSequence]
@@ -553,6 +649,8 @@ struct ScriptPager: NSViewRepresentable {
         if let old = view.layoutKey, old != layoutKey, old.size != layoutKey.size,
            LayoutKey(source: old.source, size: layoutKey.size, vertical: old.vertical, fontSize: old.fontSize,
                      lineSpacing: old.lineSpacing, charSpacing: old.charSpacing) == layoutKey {
+            // 組み直しの後に描くきっかけは、いまのもの（台本進行を入れて帯が増えたときなど、Standby が古いままにならないように）
+            view.remember(marks: marks, notes: notes, active: active, runStates: runStates)
             view.scheduleRebuild(layoutKey)
             view.applyHighlight(selected: selected)
             return
@@ -579,7 +677,7 @@ struct ScriptPager: NSViewRepresentable {
                 if let p = ScriptPageIndex.shared.page(of: uid), p != pro.page { pro.page = p }
             }
         }
-        view.show(page: min(pro.page, max(0, view.pageCount - 1)), marks: marks, notes: notes, active: active)
+        view.show(page: min(pro.page, max(0, view.pageCount - 1)), marks: marks, notes: notes, active: active, runStates: runStates)
     }
 
     struct LayoutKey: Equatable {
@@ -634,6 +732,15 @@ final class PagerView: NSView {
     private var pendingKey: ScriptPager.LayoutKey?
     private var rebuildWork: DispatchWorkItem?
 
+    /// 組み直しを待つ間に変わったきっかけ・Standby を覚えておく（組み直した後に、これで帯を描く）
+    func remember(marks: [CueMark], notes: [ScriptNote], active: Set<UUID>, runStates: [UUID: CueBandView.RunState]) {
+        if marks != lastMarks { lanesDirty = true }
+        lastMarks = marks
+        lastNotes = notes
+        lastActive = active
+        lastRunStates = runStates
+    }
+
     func scheduleRebuild(_ key: ScriptPager.LayoutKey) {
         pendingKey = key
         rebuildWork?.cancel()
@@ -654,7 +761,7 @@ final class PagerView: NSView {
         let count = pageCount
         pro.pageCount = count
         if pro.page >= count { pro.page = max(0, count - 1) }
-        show(page: min(pro.page, max(0, count - 1)), marks: lastMarks, notes: lastNotes, active: lastActive)
+        show(page: min(pro.page, max(0, count - 1)), marks: lastMarks, notes: lastNotes, active: lastActive, runStates: lastRunStates)
     }
 
     var pageCount: Int { pageViews.count }
@@ -680,6 +787,7 @@ final class PagerView: NSView {
     private var lanesDirty = true
     private var lastNotes: [ScriptNote] = []
     private var lastActive: Set<UUID> = []
+    private var lastRunStates: [UUID: CueBandView.RunState] = [:]
 
     /// いま主に見えているページ
     var currentPage: Int { min(max(Int((offset / pageLength).rounded()), 0), max(0, pageViews.count - 1)) }
@@ -786,7 +894,7 @@ final class PagerView: NSView {
         layoutKey = key
         pageSize = CGSize(width: max(100, key.size.width), height: max(100, key.size.height))
         // きっかけの帯の分を空ける（縦書きは下、横書きは右）
-        bandThickness = key.vertical ? min(170, max(90, pageSize.height * 0.3)) : min(260, max(150, pageSize.width * 0.38))
+        bandThickness = key.vertical ? min(180, max(90, pageSize.height * 0.3)) : min(260, max(150, pageSize.width * 0.38))
         for v in pageViews { v.removeFromSuperview() }
         for b in bands { b.removeFromSuperview() }
         pageViews = []
@@ -894,13 +1002,14 @@ final class PagerView: NSView {
     }
 
     /// page のページを出す。いま見えているページと違えば、そこまで流す（組み直した直後は飛ぶ）
-    func show(page: Int, marks: [CueMark], notes: [ScriptNote], active: Set<UUID>) {
+    func show(page: Int, marks: [CueMark], notes: [ScriptNote], active: Set<UUID>, runStates: [UUID: CueBandView.RunState]) {
         guard pageViews.indices.contains(page) else { return }
-        let marksChanged = marks != lastMarks || active != lastActive || notes != lastNotes
+        let marksChanged = marks != lastMarks || active != lastActive || notes != lastNotes || runStates != lastRunStates
         if marks != lastMarks { lanesDirty = true }
         lastMarks = marks
         lastNotes = notes
         lastActive = active
+        lastRunStates = runStates
         let target = CGFloat(page) * pageLength
         if justBuilt {
             justBuilt = false
@@ -1003,10 +1112,10 @@ final class PagerView: NSView {
                 let from = pos(a).map { $0 + shift(na) } ?? startEdge
                 let to = pos(b).map { $0 + shift(nb) } ?? endEdge
                 items.append(.init(mark: m, start: from, end: to, startsHere: pos(a) != nil, endsHere: pos(b) != nil, lit: lit,
-                                   swapped: s > e, lane: laneOf[m.id] ?? 0))
+                                   swapped: s > e, lane: laneOf[m.id] ?? 0, run: lastRunStates[m.id]))
             } else if let p = pos(s) {
                 items.append(.init(mark: m, start: p + shift(m.start), end: nil, startsHere: true, endsHere: false, lit: lit,
-                                   lane: laneOf[m.id] ?? 0))
+                                   lane: laneOf[m.id] ?? 0, run: lastRunStates[m.id]))
             }
         }
         var notes: [(note: ScriptNote, pos: CGFloat)] = []
@@ -1042,7 +1151,7 @@ final class PagerView: NSView {
         }
         let nameFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
         let keyFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .bold)
-        let lanes = vertical ? max(1, Int((bandThickness - 6) / 50)) : 4
+        let lanes = vertical ? max(1, Int((bandThickness - 6) / CueBandView.laneHeight)) : 4
         var spans: [(id: UUID, lo: Double, hi: Double)] = []
         for m in lastMarks {
             guard let s = locate(m.start) else { continue }
@@ -1201,12 +1310,13 @@ final class PagerView: NSView {
                 let from = pa == page ? pdfCoord(page: page, na) : startEdge
                 let to = pb == page ? pdfCoord(page: page, nb) : endEdge
                 items.append(.init(mark: m, start: from, end: to, startsHere: pa == page, endsHere: pb == page, lit: lit,
-                                   swapped: swapped, lane: laneOf[m.id] ?? 0))
+                                   swapped: swapped, lane: laneOf[m.id] ?? 0, run: lastRunStates[m.id]))
                 if pa == page { lines.append(.init(pos: from, color: m.color, lit: lit)) }
                 if pb == page { lines.append(.init(pos: to, color: m.color, lit: lit, isEnd: true)) }
             } else if sp == page {
                 let p = pdfCoord(page: page, m.start)
-                items.append(.init(mark: m, start: p, end: nil, startsHere: true, endsHere: false, lit: lit, lane: laneOf[m.id] ?? 0))
+                items.append(.init(mark: m, start: p, end: nil, startsHere: true, endsHere: false, lit: lit, lane: laneOf[m.id] ?? 0,
+                                   run: lastRunStates[m.id]))
                 lines.append(.init(pos: p, color: m.color, lit: lit))
             }
         }
@@ -1306,6 +1416,18 @@ final class PagerView: NSView {
 /// きっかけの帯。きっかけの位置から色付きの線を引き、押すキー・名前・メモを横書きで添える（音響台本の書き方）。
 /// 縦書きのときはページの下（線は横、右から左へ）、横書きのときはページの右（線は縦、上から下へ）
 final class CueBandView: NSView {
+    /// 縦書きの帯の 1 段の高さ（線・名前・Standby とメモの 3 段が入る）
+    static let laneHeight: CGFloat = 56
+
+    /// 台本進行中の、きっかけの状態（リストの曲の表示と同じ「Standby」「Playing」）
+    enum RunState: Equatable {
+        case standby, playing
+        /// 鳴っていて、次に Space で止まる
+        case stopNext
+        /// Space などで止めている（フェードアウト中）
+        case fading
+    }
+
     struct Item {
         var mark: CueMark
         /// 線の始まり・終わり（帯の外側のページの座標で、縦書きは x、横書きは y）。終わりが nil なら線を引かない（効果音など）
@@ -1319,6 +1441,8 @@ final class CueBandView: NSView {
         var swapped = false
         /// 帯の何段目に描くか（台本全体で決めるので、ページをまたいでも同じ段）
         var lane = 0
+        /// 台本進行中の Standby・Playing
+        var run: RunState?
     }
 
     var vertical = true
@@ -1336,14 +1460,24 @@ final class CueBandView: NSView {
     private var dragging: (item: Int, isEnd: Bool, origin: CGFloat, base: CGFloat)?
     /// 描いたラベルと線の場所（⌘／control＋クリックで鳴らすため）
     private var hits: [(rect: NSRect, id: UUID)] = []
+    /// 描いたラベル（札と名前）の場所（台本進行中のダブルクリックで Standby にするため）
+    private var labelHits: [(rect: NSRect, id: UUID)] = []
 
     override var isFlipped: Bool { true }
 
-    /// ⌘＋クリック・control＋クリックで、その印のキー・曲を鳴らす
+    /// ⌘＋クリック・control＋クリックで、その印のキー・曲を鳴らす。
+    /// 台本進行中は、ラベル（札と名前）のダブルクリックで、そのきっかけを Standby にする
     override func mouseDown(with event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard flags.contains(.command) || flags.contains(.control) else { return dragTick(event) }
         let p = convert(event.locationInWindow, from: nil)
+        if flags.isEmpty, event.clickCount == 2, !ticks.contains(where: { $0.rect.contains(p) }),
+           let hit = labelHits.last(where: { $0.rect.contains(p) }) {
+            MainActor.assumeIsolated {
+                if ProModel.shared.scriptRun { ProModel.shared.setStandby(hit.id) }
+            }
+            return
+        }
+        guard flags.contains(.command) || flags.contains(.control) else { return dragTick(event) }
         // 重なっていたら、あとに描いた（上に見えている）ものを
         guard let hit = hits.last(where: { $0.rect.insetBy(dx: -3, dy: -3).contains(p) }) else { return }
         MainActor.assumeIsolated { ProModel.shared.play(markID: hit.id) }
@@ -1400,6 +1534,9 @@ final class CueBandView: NSView {
                 let m = item.mark
                 let id = m.id
                 menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を鳴らす", m.name, m.label)) { pro.play(markID: id) })
+                if pro.scriptRun, pro.scriptStandby != id {
+                    menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を Standby にする", m.name, m.label)) { pro.setStandby(id) })
+                }
                 if pro.isPlaying(markID: id) {
                     menu.addItem(ClosureMenuItem(title: L("「%@」（%@）を止める（フェードアウト）", m.name, m.label)) { pro.stop(markID: id) })
                 }
@@ -1503,6 +1640,7 @@ final class CueBandView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         hits = []
+        labelHits = []
         ticks = []
         noteHits = []
         defer { window?.invalidateCursorRects(for: self) }
@@ -1513,22 +1651,82 @@ final class CueBandView: NSView {
         drawNotes()
     }
 
-    /// ラベル（札と名前）とメモの大きさ
-    private func labelSize(_ m: CueMark, continued: Bool) -> (key: NSSize, name: NSSize, memo: NSSize, total: NSSize) {
+    private let runFont = NSFont.systemFont(ofSize: 10, weight: .bold)
+
+    /// 台本進行の札の文字（舞台の言い方に合わせ、日本語の画面でも英語。リストの曲の表示と同じ）
+    private func runTagText(_ run: RunState) -> String {
+        switch run {
+        case .standby: return "Standby"
+        case .playing, .stopNext: return "Playing"
+        case .fading: return "Fading"
+        }
+    }
+
+    private func runTagColor(_ run: RunState) -> NSColor {
+        switch run {
+        case .standby: return .systemOrange
+        case .playing, .stopNext: return .systemGreen
+        case .fading: return .systemGray
+        }
+    }
+
+    /// 次に Space で止まる目印（キーの形の「space」）
+    private let spaceKeyText = "space" as NSString
+
+    private func capsuleSize(_ run: RunState) -> NSSize {
+        let t = (runTagText(run) as NSString).size(withAttributes: [.font: runFont])
+        return NSSize(width: ceil(t.width) + 12, height: ceil(t.height) + 2)
+    }
+
+    private func runTagSize(_ run: RunState) -> NSSize {
+        var size = capsuleSize(run)
+        if run == .stopNext {
+            size.width += 4 + ceil(spaceKeyText.size(withAttributes: [.font: runFont]).width) + 10
+        }
+        return size
+    }
+
+    /// 「Standby」（オレンジ）・「Playing」（緑）・「Fading」（灰）の札。次に Space で止まる音は、後ろに「space」のキー
+    private func drawRunTag(_ run: RunState, in rect: NSRect) {
+        let capsule = NSRect(origin: rect.origin, size: capsuleSize(run))
+        runTagColor(run).setFill()
+        NSBezierPath(roundedRect: capsule, xRadius: capsule.height / 2, yRadius: capsule.height / 2).fill()
+        let t = runTagText(run) as NSString
+        let size = t.size(withAttributes: [.font: runFont])
+        t.draw(at: NSPoint(x: capsule.midX - size.width / 2, y: capsule.midY - size.height / 2),
+               withAttributes: [.font: runFont, .foregroundColor: NSColor.white])
+        guard run == .stopNext else { return }
+        let ks = spaceKeyText.size(withAttributes: [.font: runFont])
+        let key = NSRect(x: capsule.maxX + 4, y: capsule.minY, width: ceil(ks.width) + 10, height: capsule.height)
+        let path = NSBezierPath(roundedRect: key.insetBy(dx: 0.5, dy: 0.5), xRadius: 3, yRadius: 3)
+        NSColor.labelColor.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        spaceKeyText.draw(at: NSPoint(x: key.midX - ks.width / 2, y: key.midY - ks.height / 2),
+                          withAttributes: [.font: runFont, .foregroundColor: NSColor.labelColor])
+    }
+
+    /// ラベル（札と名前）と、その下の段（台本進行の Standby・Playing とメモ）の大きさ
+    private func labelSize(_ m: CueMark, continued: Bool, run: RunState? = nil) -> (key: NSSize, name: NSSize, memo: NSSize, total: NSSize) {
         let key = (m.label as NSString).size(withAttributes: [.font: keyFont])
         let nameText = (continued ? "… " : "") + m.name
         let name = (nameText as NSString).size(withAttributes: [.font: nameFont])
         let memo = m.memo.isEmpty ? .zero : (m.memo as NSString).size(withAttributes: [.font: memoFont])
         let first = key.width + 10 + 5 + name.width
-        return (key, name, memo, NSSize(width: max(first, memo.width), height: 18 + (m.memo.isEmpty ? 0 : memo.height + 1)))
+        // 下の段: Standby・Playing があれば札の下から（その後ろにメモ）、無ければメモを名前の下に
+        let tag = run.map(runTagSize) ?? .zero
+        let second: CGFloat = run != nil ? tag.width + (m.memo.isEmpty ? 0 : 5 + memo.width) : (m.memo.isEmpty ? 0 : key.width + 10 + 5 + memo.width)
+        let secondHeight = max(tag.height, memo.height)
+        return (key, name, memo, NSSize(width: max(first, second), height: 18 + (secondHeight > 0 ? secondHeight + 1 : 0)))
     }
 
     /// 札（キーの文字）と名前を描く。origin はラベルの左上
     private func drawLabel(_ item: Item, at origin: NSPoint) {
         let m = item.mark
-        let s = labelSize(m, continued: !item.startsHere)
+        let s = labelSize(m, continued: !item.startsHere, run: item.run)
         let keyRect = NSRect(x: origin.x, y: origin.y, width: s.key.width + 10, height: 17)
         hits.append((NSRect(origin: origin, size: s.total), m.id))
+        labelHits.append((NSRect(origin: origin, size: s.total), m.id))
         let shape = NSBezierPath(roundedRect: keyRect, xRadius: 4, yRadius: 4)
         m.color.withAlphaComponent(item.lit ? 1 : 0.75).setFill()
         shape.fill()
@@ -1542,19 +1740,26 @@ final class CueBandView: NSView {
         let nameText = (item.startsHere ? "" : "… ") + m.name
         (nameText as NSString).draw(at: NSPoint(x: keyRect.maxX + 5, y: origin.y + (17 - s.name.height) / 2),
                                     withAttributes: [.font: nameFont, .foregroundColor: NSColor.labelColor])
+        // 3 段目: 台本進行の Standby・Playing（線・名前に重ならないよう、札の下に）。メモはその後ろ
+        var memoX = keyRect.maxX + 5
+        if let run = item.run {
+            let size = runTagSize(run)
+            drawRunTag(run, in: NSRect(x: keyRect.minX, y: origin.y + 19, width: size.width, height: size.height))
+            memoX = keyRect.minX + size.width + 5
+        }
         if !m.memo.isEmpty {
-            (m.memo as NSString).draw(at: NSPoint(x: keyRect.maxX + 5, y: origin.y + 18),
+            (m.memo as NSString).draw(at: NSPoint(x: memoX, y: origin.y + 19),
                                       withAttributes: [.font: memoFont, .foregroundColor: NSColor.secondaryLabelColor])
         }
     }
 
     // 縦書き: 線は横。始まり（右）に縦の印、ラベルは線の下に、始まりの印に右をそろえる
     private func drawVertical() {
-        let laneHeight: CGFloat = 50
+        let laneHeight = Self.laneHeight
         let lanes = max(1, Int((bounds.height - 6) / laneHeight))
         // 始まりが右（ページの先）のものから順に段を決める
         for (index, item) in items.enumerated().sorted(by: { $0.element.start > $1.element.start }) {
-            let s = labelSize(item.mark, continued: !item.startsHere)
+            let s = labelSize(item.mark, continued: !item.startsHere, run: item.run)
             let right = item.start
             // 段は台本全体で決めてある（ページをまたいでも同じ段）
             let lane = min(item.lane, lanes - 1)
@@ -1593,7 +1798,7 @@ final class CueBandView: NSView {
         var labelBottom: CGFloat = 0
         let labelX = 10 + slotWidth * CGFloat(slots) + 6
         for (index, item) in items.enumerated().sorted(by: { $0.element.start < $1.element.start }) {
-            let s = labelSize(item.mark, continued: !item.startsHere)
+            let s = labelSize(item.mark, continued: !item.startsHere, run: item.run)
             let top = item.start
             let bottom = item.end ?? top + 14
             let slot = min(item.lane, slots - 1)
