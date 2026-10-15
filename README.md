@@ -39,15 +39,21 @@ ScenarioWriterSolo の `samples/sample.scwd` で作ったサンプル公演を�
 
 Pro の機能の言葉の英訳は `Pro/Resources/Languages/en-pro.json`（Simple 版の `en.json` に重ねて読む）。言葉を足したら、ここにも訳を足す。
 
+撮り直すときは `manual/shots/batch.sh`（2026-10-16 に作った）。Debug をビルドしてから実行すると、
+`make_samples.py` が `sample/夕暮れの谷.ccsc` から撮影用のキューシート（日本語・英語 × 縦・横。4 曲のリスト〈作った音〉・
+メモ・書き込み・MIDI の割り当て入り）を `manual/shots/shots/` に作り、`shot.sh` が開発版をライトの見た目
+（`-NSRequiresAquaSystemAppearance YES`）で起動して左のディスプレイ（1x）に窓を置き、`winid` で窓の番号を取って
+`screencapture -l` で撮る。出力の系統は `-pro.outputs '<JSON の16進>'`、MIDI の画面は `vmidi`（CoreMIDI の仮想の機器
+「MIDI Controller」「Lighting Console」）を上げて撮る。シート・帯・インスペクタの行は `crop` で切り抜く（09 だけ主ディスプレイ 2x）。
+07（PDF の台本）は撮り直していない（2026-10-12 のまま）。
+
 ```sh
-<Debug の app>/Contents/MacOS/CacaoSoundCuesPro -debugOpen <サンプル.ccsc> -debugSelectKey 18 \
-  -pro.sync.role off -pro.showScript '<true/>' -showKeyboard NO -showInspector YES \
+<Debug の app>/Contents/MacOS/CacaoSoundCuesPro -NSRequiresAquaSystemAppearance YES -debugOpen <サンプル.ccsc> \
+  -debugSelectKey 18 -pro.sync.role off -pro.showScript '<true/>' -showKeyboard NO -showInspector YES -showList YES \
   [-debugOutputs YES] [-debugSync YES -pro.sync.role main|backup] [-pro.outputs '<系統の JSON を16進>'] \
   [-debugMIDI YES -pro.midi.output '<送る機器の名前>']
 screencapture -x -o -l <窓の番号> 01-main.png
 ```
-
-MIDI の画面写真（08・09）は、撮る間だけ CoreMIDI の仮想の機器（「MIDI Controller」「Lighting Console」）を作って撮った。
 
 ## Pro の機能
 
