@@ -2,6 +2,7 @@
     "name": "English (Pro)",
     "code": "en",
     "strings": {
+        "保存（キューシートを上書き保存。⌘S）": "Save (overwrite the cue sheet, ⌘S)",
         "きっかけ": "Cue point",
         "台本で見る": "Show in script",
         "台本の中に見つかりません（台本が直された？）": "Not found in the script (was the script edited?)",

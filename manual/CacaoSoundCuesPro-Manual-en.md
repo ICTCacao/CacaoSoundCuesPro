@@ -49,7 +49,7 @@ footer: "CacaoSoundCues Pro Manual / ICTCacao"
 # CacaoSoundCues Pro Manual
 
 Script-linked sound cue playback for the stage
-Version 5.1.2 / October 2026
+Version 5.1.7 / October 2026
 
 ---
 
@@ -110,7 +110,7 @@ Version 5.1.2 / October 2026
 <div class="cols">
 <div>
 
-1. Double-click **CacaoSoundCuesPro-5.1.2.dmg** to open it
+1. Double-click **CacaoSoundCuesPro-5.1.7.dmg** to open it
 2. Drag **CacaoSoundCuesPro** onto **Applications**
 3. Double-click CacaoSoundCuesPro in the Applications folder to launch
 
@@ -243,7 +243,8 @@ This is used to connect to the backup Mac on the same network. Click **Allow**.<
 ### Panel width
 
 - Drag the divider between the script and the main window
-- Drag to the right edge to **fill the window** with the script (the main window is hidden; keys and Return still work)
+- While the script is shown, the main window is laid out side by side: **keyboard | sound settings** (the list, when there is one, goes under the keyboard; the settings only when shown)
+- Drag to the right edge to **fill the window** with the script (the main window is hidden; keys and Return still work). Click **‹** at the right edge, or drag it a little to the left, to bring the main window back
 - Click **‹** in the panel header to **fold** the script to the left (click the thin strip to open it)
 
 ### Next page
@@ -378,8 +379,8 @@ The line starts exactly where you clicked (even between lines).
 ### Waveform of what is playing
 
 - Under the script, the waveforms of the sounds playing are shown (up to 3)
-- Played part darker, the current position as a white line, **time remaining** on the right
-- The yellow horizontal line is **the current volume** (it moves with fades and volume lines)
+- The newest sound looks like the sound settings: the **fade shape** (orange), **volume line** (light blue), **pan line** (pink), the yellow playhead and the fade in progress. On the right, **the current pan and volume** (sound volume × fade × lines); on the left, the badge and **time remaining**
+- The others are thin waveforms only (played part darker, the yellow line is the current volume)
 
 <span class="small">In Show Mode, links and notes cannot be changed (playing and stopping still work).</span>
 

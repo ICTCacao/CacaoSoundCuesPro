@@ -9,7 +9,8 @@ import SwiftUI
 
 /// 主画面の横に台本のパネルを並べる。
 /// 開く・畳むで主画面の入れ物が変わらないよう、HSplitView は使わずに自分で並べる（畳んだら主画面が台本のぶんまで広がる）。
-/// 主画面は、出しているパネル（キーの一覧・リスト・音源設定）がそれぞれ最小の幅で入るところまで狭められる。
+/// 台本を出しているときの主画面は横並び（キーボードのボタンだけ ｜ リスト ｜ 音源設定。MainView.scriptSideLayout）で、
+/// 出しているものがそれぞれ最小の幅で入るところまで狭められる。
 /// それより台本を広げると主画面を隠し、台本を窓いっぱいに出す
 struct ProScriptSplit<Content: View>: View {
     @ViewBuilder var content: Content
@@ -21,23 +22,31 @@ struct ProScriptSplit<Content: View>: View {
     @AppStorage("showKeypad") private var showKeypad = false
     @AppStorage("keyboardScale") private var keyboardScale = 1.0
     @State private var dragStart: CGFloat?
+    /// 窓いっぱいの状態から引き始めたか（少し左へ引くだけで主画面を出す）
+    @State private var dragFromFull = false
 
     private var minScript: CGFloat { 280 }
     /// 仕切りの太さ（つかむところ）
     private var handle: CGFloat { 7 }
+    /// 窓いっぱいのときの仕切りの太さ。窓の右端は窓の大きさを変えるつかみ所と重なってつかめないので、広めにして矢印を出す
+    private var fullHandle: CGFloat { 18 }
+    /// 台本を窓いっぱいにしているか（主画面を隠す「台本モード」）
+    private var isFull: Bool { fraction >= 0.999 }
 
     /// 主画面の最小の幅（MainView の各パネルの minWidth と、キーボードがいちばん小さくなったときの幅）。
-    /// リストの欄は、リストがあるとき（か「リスト」ボタンで出したとき）だけ
+    /// 台本を出しているときの主画面は横並び（キーボードのボタン〈リストはその下〉 ｜ 音源設定）なので、その合計。
+    /// キーボードを隠しているときは キーの一覧 ｜ リスト ｜ 音源設定。リストの欄は、リストがあるとき（か「リスト」ボタンで出したとき）だけ
     private var minContent: CGFloat {
         let divider: CGFloat = 1
         let list = AppModel.shared.listVisible
+        let first: CGFloat
         if showKeyboard {
-            let columns: CGFloat = 13 + (showKeypad ? 4 : 0)
-            let keyboard = 44 * min(keyboardScale, 1) * columns + 5 * (columns - 1) + (showKeypad ? 22 : 0) + 40
-            let panels: CGFloat = showInspector ? (list ? 400 + divider + 480 : 480) : (list ? 400 : 0)
-            return max(keyboard, panels)
+            let keyboard = KeyboardView.minWidth(scale: keyboardScale, keypad: showKeypad, compact: true)
+            first = list ? max(keyboard, 380) : keyboard
+        } else {
+            first = 260 + (list ? divider + 380 : 0)
         }
-        return 260 + (list ? divider + 380 : 0) + (showInspector ? divider + 460 : 0)
+        return first + (showInspector ? divider + 460 : 0)
     }
 
     var body: some View {
@@ -47,7 +56,7 @@ struct ProScriptSplit<Content: View>: View {
         GeometryReader { geo in
             let total = geo.size.width
             let width = scriptWidth(total: total)
-            let full = width >= total - handle
+            let full = isFull
             HStack(spacing: 0) {
                 if pro.showPanel {
                     ScriptPanel()
@@ -70,42 +79,64 @@ struct ProScriptSplit<Content: View>: View {
         }
     }
 
-    /// 台本の幅。主画面が最小の幅より狭くなるところまで広げたら、窓いっぱい
+    /// 台本の幅。窓いっぱい（fraction が 1）なら仕切りを除いた全部、そうでなければ主画面が最小の幅で入るところまで
     private func scriptWidth(total: CGFloat) -> CGFloat {
+        if isFull { return total - fullHandle }
         let maxSide = total - handle - minContent
         let w = CGFloat(fraction) * total
-        if fraction >= 0.999 || w > maxSide { return w > maxSide + minContent / 2 || fraction >= 0.999 ? total - handle : max(minScript, maxSide) }
-        return max(minScript, w)
+        return max(minScript, min(w, maxSide))
     }
 
-    /// ドラッグで幅を変える仕切り。主画面の最小の幅を越えて半分以上引っぱると、台本を窓いっぱいに
+    /// 主画面を最小の幅で出したときの台本の幅（窓いっぱいから戻る先）
+    private func widestSide(total: CGFloat) -> CGFloat { max(minScript, total - handle - minContent) }
+
+    /// ドラッグで幅を変える仕切り。主画面の最小の幅を越えて半分以上引っぱると、台本を窓いっぱいに。
+    /// 窓いっぱいのときは広い仕切りに矢印を出し、少し左へ引くかクリックすると主画面が戻る
     private func divider(total: CGFloat) -> some View {
         ZStack {
             Color.clear
-            Rectangle().fill(Theme.divider).frame(width: 1)
+            if isFull {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            } else {
+                Rectangle().fill(Theme.divider).frame(width: 1)
+            }
         }
-        .frame(width: handle)
+        .frame(width: isFull ? fullHandle : handle)
+        .background(isFull ? Theme.panel : Color.clear)
         .contentShape(Rectangle())
         .onHover { inside in
             if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+        }
+        .onTapGesture {
+            // 窓いっぱいのときにクリック: 主画面を出す
+            guard isFull, total > 0 else { return }
+            fraction = Double(widestSide(total: total) / total)
         }
         .gesture(
             DragGesture(minimumDistance: 1, coordinateSpace: .global)
                 .onChanged { v in
                     guard total > 0 else { return }
                     let start = dragStart ?? scriptWidth(total: total)
-                    if dragStart == nil { dragStart = start }
+                    if dragStart == nil {
+                        dragStart = start
+                        dragFromFull = isFull
+                    }
                     let w = start + v.translation.width
-                    let maxSide = total - handle - minContent
-                    if w > maxSide + minContent / 2 {
+                    let maxSide = widestSide(total: total)
+                    if dragFromFull {
+                        // 窓いっぱいから: 少し左へ引いたら主画面を出す（右端まで戻せばまた窓いっぱい）
+                        fraction = w < total - fullHandle - 24 ? Double(min(max(w, minScript), maxSide) / total) : 1
+                    } else if w > maxSide + minContent / 2 {
                         fraction = 1
                     } else {
-                        fraction = Double(min(max(w, minScript), max(minScript, maxSide)) / total)
+                        fraction = Double(min(max(w, minScript), maxSide) / total)
                     }
                 }
-                .onEnded { _ in dragStart = nil }
+                .onEnded { _ in dragStart = nil; dragFromFull = false }
         )
-        .help(L("ドラッグで台本の幅を変える（右端まで引くと台本を窓いっぱいに）"))
+        .help(isFull ? L("クリックか左へドラッグで、主画面を出す") : L("ドラッグで台本の幅を変える（右端まで引くと台本を窓いっぱいに）"))
     }
 }
 
@@ -202,7 +233,7 @@ struct ScriptPanel: View {
                 ThemeDivider()
                 // 鳴っている音の波形（高さは変えない。変わると台本の広さが変わって組み直しになるため）
                 PlayingWaveStrip()
-                    .frame(height: 44)
+                    .frame(height: PlayingWaveStrip.height)
                 ThemeDivider()
                 footer
             } else {
@@ -475,6 +506,11 @@ private struct ScriptRunStrip: View {
 struct PlayingWaveStrip: View {
     @Environment(AppModel.self) private var model
 
+    /// 帯の高さ。1 本目（いちばん新しい音）は音源設定の波形と同じ見せ方（フェード・音量ライン・PANライン・いまの音量と左右）、
+    /// 2 本目からは細い波形だけ
+    static let height: CGFloat = 116
+    private static let compactHeight: CGFloat = 18
+
     private struct Voice: Identifiable {
         var id: UInt64
         var label: String
@@ -484,35 +520,36 @@ struct PlayingWaveStrip: View {
         var frames: Int
         var status: VoiceStatus
         var sampleRate: Double
+        /// 音の設定（フェード・再生範囲・音量ライン・PANライン）
+        var settings: PlaySettings
         /// 音の音量の設定（倍率）
-        var gain: Double
+        var gain: Double { pow(10, settings.volumeDB / 20) }
+        var duration: Double { Double(frames) / max(sampleRate, 1) }
     }
 
     private var voices: [Voice] {
         var out: [Voice] = []
         for st in model.status.reversed() where !st.armed {
-            var label = "", name = "", color = Color.gray, soundID: UUID?, volumeDB = 0.0
+            var label = "", name = "", color = Color.gray, settings: PlaySettings?
             if let cue = model.show.keyCues.first(where: { $0.id == st.tag }) {
                 label = KeyboardLayout.label(cue.keyCode)
                 name = cue.name
                 color = AppModel.colors[cue.colorIndex % AppModel.colors.count]
-                soundID = cue.play.soundID
-                volumeDB = cue.play.volumeDB
+                settings = cue.play
             } else {
                 for seq in model.show.sequences {
                     if let i = seq.steps.firstIndex(where: { $0.id == st.tag }) {
                         label = "≡\(i + 1)"
                         name = seq.steps[i].name
                         color = Color(nsColor: .systemIndigo)
-                        soundID = seq.steps[i].play.soundID
-                        volumeDB = seq.steps[i].play.volumeDB
+                        settings = seq.steps[i].play
                         break
                     }
                 }
             }
-            guard let soundID, let b = model.buffers[soundID] else { continue }
+            guard let settings, let b = model.buffers[settings.soundID] else { continue }
             out.append(Voice(id: st.token, label: label, name: name, color: color, peaks: b.peaks, frames: b.frames,
-                             status: st, sampleRate: b.sampleRate, gain: pow(10, volumeDB / 20)))
+                             status: st, sampleRate: b.sampleRate, settings: settings))
             if out.count == 3 { break }
         }
         return out
@@ -527,7 +564,10 @@ struct PlayingWaveStrip: View {
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ForEach(list) { v in row(v) }
+                detailRow(list[0])
+                ForEach(list.dropFirst()) { v in
+                    compactRow(v).frame(height: Self.compactHeight)
+                }
             }
         }
         .padding(.horizontal, 8)
@@ -536,7 +576,87 @@ struct PlayingWaveStrip: View {
         .background(Color.primary.opacity(0.06))
     }
 
-    private func row(_ v: Voice) -> some View {
+    /// いちばん新しい音: 音源設定の波形と同じ見せ方。左に札と名前、真ん中に波形（フェードの形・音量ライン・PANライン・
+    /// 進んでいるフェード）、右にいまの左右といまの音量（音の音量 × フェード × 音量ライン）
+    private func detailRow(_ v: Voice) -> some View {
+        let st = v.status
+        let s = v.settings
+        let remaining = Double(max(0, st.remainingFrames)) / max(v.sampleRate, 1)
+        let playhead = Double(st.position) / max(v.sampleRate, 1)
+        let g = v.gain * Double(st.level) * Double(st.lineGain)
+        let nowDB = g > 0 ? max(20 * log10(g), FaderView.range.lowerBound) : FaderView.range.lowerBound
+        let nowPan = Double(min(max(st.panNow, -1), 1))
+        return HStack(alignment: .top, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    Text(v.label)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .background(RoundedRectangle(cornerRadius: 3).fill(v.color))
+                    Text(st.loop ? "∞" : remaining.timeText)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(st.stopping ? .orange : .secondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                Text(v.name)
+                    .font(.caption)
+                    .lineLimit(2)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            .frame(width: 92, alignment: .leading)
+            .help(v.name)
+            WaveformView(peaks: v.peaks, duration: v.duration,
+                         inPoint: .constant(s.inPoint), outPoint: .constant(s.outPoint),
+                         playhead: playhead,
+                         activeFade: activeFade(v),
+                         fadeIn: .constant(s.fadeIn),
+                         fadeOut: .constant(s.fadeOut),
+                         fadeOutAtEnd: s.fadeOutAtEnd && s.plays != nil,
+                         curve: .constant(s.curve),
+                         fadeInBezier: .constant(s.fadeInBezier),
+                         fadeOutBezier: .constant(s.fadeOutBezier),
+                         readOnly: true)
+                // PANライン（ピンク）と音量ライン（水色）。線があるときだけ描かれる
+                .overlay {
+                    ZStack {
+                        VolumeLineView(kind: .pan, points: .constant(s.panPoints), selectedPoint: .constant(nil),
+                                       selectedSegment: .constant(nil), duration: v.duration, editing: false,
+                                       playhead: playhead, liveValue: Double(st.panNow) - s.pan)
+                        VolumeLineView(kind: .volume, points: .constant(s.volumePoints), selectedPoint: .constant(nil),
+                                       selectedSegment: .constant(nil), duration: v.duration, editing: false,
+                                       playhead: playhead, liveValue: 20 * log10(Double(max(st.lineGain, 0.0001))))
+                    }
+                }
+                .allowsHitTesting(false)
+            VStack(spacing: 2) {
+                PanSlider(pan: .constant(nowPan), tint: .yellow)
+                Text(String(format: "%+.1f", nowDB))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Color.yellow)
+                FaderView(db: .constant(nowDB), readOnly: true, tint: .yellow)
+            }
+            .frame(width: 58)
+            .allowsHitTesting(false)
+            .help(L("いまの左右と音量（音の音量 × フェード × 音量ライン・PANライン）"))
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    /// いま進んでいるフェード（音源設定の波形と同じ）
+    private func activeFade(_ v: Voice) -> ActiveFade? {
+        let st = v.status
+        guard st.fading, st.fadeLength > Int(v.sampleRate * 0.05) else { return nil }
+        let sr = v.sampleRate
+        let now = Double(st.position) / sr
+        return ActiveFade(start: now - Double(st.fadeElapsed) / sr, length: Double(st.fadeLength) / sr,
+                          from: Double(st.fadeFrom), to: Double(st.fadeTo), level: Double(st.level))
+    }
+
+    /// 2 本目から: 細い波形だけ（札・範囲と進み・いまの音量の線・残り時間）
+    private func compactRow(_ v: Voice) -> some View {
         let st = v.status
         let remaining = Double(max(0, st.remainingFrames)) / max(v.sampleRate, 1)
         return HStack(spacing: 6) {
@@ -582,7 +702,6 @@ struct PlayingWaveStrip: View {
                 .fixedSize()
                 .frame(minWidth: 52, alignment: .trailing)
         }
-        .frame(maxHeight: .infinity)
     }
 }
 

@@ -25,7 +25,7 @@ rm -rf dist/CacaoSoundCuesPro.app && cp -R build/dd/Build/Products/Release/Cacao
 ./make-dmg.sh   # dist/CacaoSoundCuesPro-<版>.dmg（古い版の dmg は消す）
 ```
 
-版は `project.yml` と `Pro/Resources/Info.plist`、マニュアルの表紙と dmg の名前（`manual/*.md`）に書く。Simple 版と同じ番号にする（Simple 版の `./bump-version.sh` を上げたら、ここも同じ番号に）。
+版は `./bump-version.sh` で 0.0.1 ずつ上げる（`project.yml`・`Pro/Resources/Info.plist`・マニュアルの表紙と dmg の名前（`manual/*.md`）を書き換える。引数で番号を指定もできる）。dist に置くビルドの前に毎回実行する。
 
 ## マニュアル
 
