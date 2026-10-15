@@ -49,7 +49,7 @@ footer: "CacaoSoundCues Pro Manual / ICTCacao"
 # CacaoSoundCues Pro Manual
 
 Script-linked sound cue playback for the stage
-Version 5.1.1 / October 2026
+Version 5.1.2 / October 2026
 
 ---
 
@@ -110,7 +110,7 @@ Version 5.1.1 / October 2026
 <div class="cols">
 <div>
 
-1. Double-click **CacaoSoundCuesPro-5.1.1.dmg** to open it
+1. Double-click **CacaoSoundCuesPro-5.1.2.dmg** to open it
 2. Drag **CacaoSoundCuesPro** onto **Applications**
 3. Double-click CacaoSoundCuesPro in the Applications folder to launch
 

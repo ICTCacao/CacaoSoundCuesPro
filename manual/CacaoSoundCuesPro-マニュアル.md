@@ -49,7 +49,7 @@ footer: "CacaoSoundCues Pro マニュアル ／ ICTCacao"
 # CacaoSoundCues Pro マニュアル
 
 台本と連動する、舞台のポン出し音響アプリ
-バージョン 5.1.1 ／ 2026 年 10 月
+バージョン 5.1.2 ／ 2026 年 10 月
 
 ---
 
@@ -110,7 +110,7 @@ footer: "CacaoSoundCues Pro マニュアル ／ ICTCacao"
 <div class="cols">
 <div>
 
-1. **CacaoSoundCuesPro-5.1.1.dmg** をダブルクリックして開く
+1. **CacaoSoundCuesPro-5.1.2.dmg** をダブルクリックして開く
 2. **CacaoSoundCuesPro** を **Applications**（アプリケーション）へドラッグ
 3. アプリケーションフォルダの CacaoSoundCuesPro をダブルクリックで起動
 
