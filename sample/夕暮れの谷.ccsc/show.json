@@ -57,7 +57,7 @@
       "keyCode" : 18,
       "name" : "春は来るよ",
       "play" : {
-        "curve" : "equalPower",
+        "curve" : "custom",
         "fadeIn" : 2,
         "fadeOut" : 3,
         "fadeOutAtEnd" : false,
@@ -66,12 +66,40 @@
         "loopCount" : 0,
         "pan" : 0,
         "panPoints" : [
-
+          {
+            "db" : -0.9400000000000001,
+            "id" : "32B11DFF-1D8C-49CF-B746-6B7607489D0B",
+            "time" : 24.83
+          },
+          {
+            "db" : 1,
+            "id" : "AE313E2D-7AEE-405A-B2AA-98866AC24CDA",
+            "time" : 24.84
+          },
+          {
+            "db" : 1,
+            "id" : "A6345C3F-5DEE-4153-B4DF-302B704D6F95",
+            "time" : 50.89
+          },
+          {
+            "db" : -0.03,
+            "id" : "00CD7811-1DE8-455B-858C-CA22079464A0",
+            "time" : 50.9
+          }
         ],
         "soundID" : "8B334537-66C5-4E17-A2F9-851B91D2AAD4",
         "volumeDB" : -19.8,
         "volumePoints" : [
-
+          {
+            "db" : -0.4,
+            "id" : "76D28404-A9B7-4E44-B992-5C18ECFFE040",
+            "time" : 14.89
+          },
+          {
+            "db" : -9.9,
+            "id" : "D506ABC1-FB32-4789-8437-B7793ACB74AF",
+            "time" : 41.14
+          }
         ]
       },
       "retrigger" : "fadeOut"

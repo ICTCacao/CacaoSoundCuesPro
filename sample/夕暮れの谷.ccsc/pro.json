@@ -1,5 +1,6 @@
 {
   "autoFollow" : false,
+  "bodyChars" : 24,
   "charSpacing" : 0,
   "ends" : {
     "1835CC78-5805-4EC7-A5DC-E211F7BE6104" : {
@@ -27,6 +28,11 @@
       "nudge" : 0.16,
       "offset" : 0
     },
+    "C93C5787-A992-427A-B660-ED09A71678B9" : {
+      "line" : "pos-2-13",
+      "nudge" : 3.96,
+      "offset" : 0
+    },
     "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8" : {
       "line" : "pos-0-14",
       "nudge" : 0.7,
@@ -34,10 +40,10 @@
     }
   },
   "extraLinks" : {
-
+    "C93C5787-A992-427A-B660-ED09A71678B9" : "1835CC78-5805-4EC7-A5DC-E211F7BE6104"
   },
-  "fontSize" : 16,
-  "lineSpacing" : 0.2,
+  "fontSize" : 18,
+  "lineSpacing" : 0.5,
   "links" : {
     "1835CC78-5805-4EC7-A5DC-E211F7BE6104" : {
       "line" : "pos-0-1",
@@ -62,6 +68,11 @@
     "B7A39236-4D02-4001-BAA4-5B82BBF92540" : {
       "line" : "pos-2-1",
       "nudge" : 0.71,
+      "offset" : 0
+    },
+    "C93C5787-A992-427A-B660-ED09A71678B9" : {
+      "line" : "pos-2-12",
+      "nudge" : 0.76,
       "offset" : 0
     },
     "CDD1BEF6-594C-4B0F-AB87-39BDBF2E60D8" : {
